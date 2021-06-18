@@ -1,0 +1,45 @@
+@using Markdig
+
+@inject CurrentUserService CurrentUser
+@inject UserInfoService UserInfo
+
+@code
+{
+    [Parameter] public Bulletin Bulletin { get; set; }
+    [Parameter] public Action<Bulletin> BulletEditor { get; set; }
+}
+
+<div class="col-12 col-md-6 mb-2">
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title mb-0">
+                @Bulletin.Title
+                @if (CurrentUser.User.IsOperator)
+                {
+                    <span class="float-right">
+                        <button class="btn btn-outline-primary btn-sm" 
+                                @onclick="@(() => BulletEditor?.Invoke(Bulletin))">
+                        @localizer["operation.edit"]
+                        </button>
+                    </span>
+                }
+            </h5>
+            <small class="text-monospace">
+                <span class="text-primary">
+                    @{ 
+                        var user = UserInfo.GetUserById(Bulletin.AuthorUserId);
+                    }
+                    <a href="/user/@user.Qid">@user.NickName</a>
+                </span>
+                @localizer["bulletin.updateDate"]: @Bulletin.PublishTime.ToLongDateString()
+                <span class="text-info">
+                    @localizer["bulletin.priority"]: @Bulletin.Priority
+                </span>
+            </small>
+            <hr class="mt-1" />
+            <div class="card-text">
+                @((MarkupString)Markdown.ToHtml(Bulletin.MarkdownContent))
+            </div>
+        </div>
+    </div>
+</div>

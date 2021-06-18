@@ -1,0 +1,175 @@
+@inject DiscussionService DiscussService
+@inject CurrentUserService CurrentUser
+@inject UserInfoService UserInfo
+@inject NavigationManager NavigationManager
+@inject PreferenceService Preference
+@inject JSInvokeService Js
+
+@code
+{
+    private List<Discussion> discussions;
+    private Discussion editingDiscussion;
+    private int loadedPageCount;
+    private ActionWaiter waiter = new ActionWaiter();
+
+    protected override void OnInitialized()
+    {
+        loadedPageCount = 1;
+        discussions = DiscussService.GetAll();
+        discussions.Sort((a, b) =>
+        {
+            if (a.IsTopped != b.IsTopped)
+            {
+                return a.IsTopped ? -1 : 1;
+            }
+            else return -a.UpdateTime.CompareTo(b.UpdateTime);
+        });
+        editingDiscussion = new Discussion
+        {
+            CreatorUserId = CurrentUser.User.Id,
+            Type = DiscussionType.Chatting
+        };
+        StateHasChanged();
+    }
+
+    private async Task RemoveAsync(int disId)
+    {
+        if (waiter.CantInvoke) return;
+
+        await DiscussService.RemoveAsync(disId);
+        OnInitialized();
+        waiter.EndInvoke();
+    }
+
+    private async Task OnSubmitAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        var id = await DiscussService.AddAsync(editingDiscussion);
+        waiter.EndInvoke();
+        LoadDiscussion(id);
+    }
+
+    private void LoadDiscussion(int id)
+    {
+        NavigationManager.NavigateTo($"/post/{id}", forceLoad: true);
+    }
+
+    private async Task LoadMore()
+    {
+        if (waiter.CantInvoke) return;
+
+        loadedPageCount += 1;
+        StateHasChanged();
+        await Js.ResetButtonAsync();
+        waiter.EndInvoke();
+    }
+}
+
+<h2>
+    @localizer["nav.discussion"]
+    <span class="h6 font-weight-normal">
+        <ModalComponent ModalButtonText="@localizer["operation.add"]" ModalButtonClass="float-right btn-sm">
+            <ModalTitle>@localizer["discussion.new"]</ModalTitle>
+            <ModalBody>
+                <EditForm Model="editingDiscussion" OnValidSubmit="OnSubmitAsync">
+                    <DataAnnotationsValidator></DataAnnotationsValidator>
+                    <p class="form-group">
+                        <label>@localizer["discussion.title"]</label>
+                        <InputText @bind-Value="editingDiscussion.Title" class="form-control"></InputText>
+                        <ValidationMessage For="@(() => editingDiscussion.Title)"></ValidationMessage>
+                    </p>
+                    <p class="form-group">
+                        <label>@localizer["discussion.type"]</label>
+                        <InputSelect @bind-Value="editingDiscussion.Type" class="custom-select">
+                            @foreach (var type in (DiscussionType[])Enum.GetValues(typeof(DiscussionType)))
+                            {
+                                if (type != DiscussionType.MissionRelated)
+                                {
+                                    <option value="@type">@localizer[$"discussion.type.{type}"]</option>
+                                }
+                            }
+                        </InputSelect>
+                    </p>
+
+                    <button class="btn btn-outline-primary mr-2" type="submit"
+                            id="disBtn" onclick="setButtonBuzy('disBtn')">
+                        @localizer["operation.submit"]
+                    </button>
+                </EditForm>
+            </ModalBody>
+        </ModalComponent>
+    </span>
+</h2>
+
+<hr />
+
+
+@if (discussions.Count == 0)
+{
+    <ListEmptyComponent></ListEmptyComponent>
+}
+else
+{
+    <table class="table table-hover">
+        <thead class="table-borderless">
+            <tr>
+                <th>
+                    @localizer["discussion.title"]
+                </th>
+                <th class="text-right w-25">
+                    @localizer["discussion.publishDate"]
+                </th>
+                <th class="text-right w-25">
+                    @localizer["discussion.updateDate"]
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var disc in discussions.GetRange(0, Math.Min(loadedPageCount * (~Preference).PageCapacity, discussions.Count)))
+            {
+                <tr>
+                    <th class="w-50">
+                        <a class="btn-link btn-sm" @onclick="@(() => LoadDiscussion(disc.Id))">
+                            @if (disc.IsTopped)
+                            {
+                                <span class="badge badge-info mr-2">
+                                    @localizer["discussion.topped"]
+                                </span>
+                            }
+                            <span class="badge badge-secondary">
+                                @localizer[$"discussion.type.{disc.Type}"]
+                            </span>
+                            @disc.Title
+                            <span class="text-secondary">
+                                (@disc.DiscussionPosts.Count)
+                            </span>
+                        </a>
+                    </th>
+                    <td class="text-right">
+                        <small>
+                            <span class="text-primary">@UserInfo.GetUserById(disc.CreatorUserId).NickName</span> |
+                            <span class="text-monospace">@disc.CreationTime.ToString("yyyy-MM-dd")</span>
+                        </small>
+                    </td>
+                    <td class="text-right">
+                        <small>
+                            <span class="text-primary">@UserInfo.GetUserById(DiscussService.GetLastestPostOf(disc.Id)?.UserId ?? disc.CreatorUserId).NickName</span> |
+                            <span class="text-monospace">@disc.UpdateTime.ToString("yyyy-MM-dd HH:mm")</span>
+                        </small>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (loadedPageCount * (~Preference).PageCapacity < discussions.Count)
+{
+    <div class="d-flex justify-content-center">
+        <button class="btn btn-outline-primary" @onclick="LoadMore"
+                id="loadmoreBtn" onmouseup="setButtonBuzy('loadmoreBtn')">
+            @localizer["operation.loadmore"]
+        </button>
+    </div>
+}

@@ -1,0 +1,48 @@
+@using Markdig
+
+@inject CurrentUserService CurrentUser
+@inject UserInfoService UserInfo
+@inject JSInvokeService Js
+
+@code
+{
+    [Parameter] public DiscussionPost Post { get; set; }
+    [Parameter] public EventCallback<int> PostRemover { get; set; }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (await Js.Confirm(localizer["operation.confirm"]))
+        {
+            await PostRemover.InvokeAsync(Post.Id);
+        }
+        await Js.ResetButtonAsync();
+    }
+}
+
+<div class="col-12 my-2">
+    <div class="card">
+        <div class="card-body">
+            @if (CurrentUser.User.Id == Post.UserId || CurrentUser.User.IsOperator)
+            {
+                <span class="float-right">
+                    <button class="btn btn-outline-danger btn-sm" 
+                            @onclick="@(async () => await ConfirmDeleteAsync())">
+                    @localizer["operation.delete"]
+                    </button>
+                </span>
+            }
+            @{ 
+                var user = UserInfo.GetUserById(Post.UserId);
+            }
+            <small class="text-monospace">
+                <span class="text-primary">
+                    <a href="/user/@user.Qid">@user.NickName</a>
+                </span>
+                @Post.CreationTime
+            </small>
+            <div class="card-text">
+                @((MarkupString)Markdown.ToHtml(Post.Content))
+            </div>
+        </div>
+    </div>
+</div>

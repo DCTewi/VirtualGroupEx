@@ -1,0 +1,174 @@
+@inject MissionService MissionService
+@inject JSInvokeService Js
+@inject CurrentUserService CurrentUser 
+
+@code 
+{
+    [Parameter] public MissionSection MissionSection { get; set; }
+    [Parameter] public bool IsOperator { get; set; }
+    [Parameter] public EventCallback<int> Remover { get; set; }
+    [Parameter] public EventCallback Reloader { get; set; }
+
+    private bool canJoin = false;
+    private MissionColumn editingColumn;
+    private ActionWaiter waiter = new ActionWaiter();
+    private ISet<SkillPoint> demand = new HashSet<SkillPoint>();
+
+    protected override void OnInitialized()
+    {
+        if (MissionSection.MissionColumns == null)
+        {
+            MissionSection = MissionService.GetSectionIncludingColumns(MissionSection.Id);
+            MissionSection.MissionColumns.Sort((a, b) =>
+            {
+                if (a.SkillPoint == b.SkillPoint)
+                {
+                    return a.Id.CompareTo(b.Id);
+                }
+                else
+                {
+                    return a.SkillPoint.CompareTo(b.SkillPoint);
+                }
+            });
+
+            canJoin = MissionSection.GetStatus() switch
+            {
+                MissionSectionStatus.Processing or MissionSectionStatus.Completed => false,
+                _ => true
+            };
+
+            demand = MissionSection.GetDemandSet();
+            demand.IntersectWith(CurrentUser.User.SkillPoints);
+
+            canJoin &= demand.Count > 0;
+
+            if (canJoin)
+            {
+                editingColumn = new MissionColumn
+                {
+                    MissionSectionId = MissionSection.Id,
+                    UserId = CurrentUser.User.Id,
+                    Status = MissionColumnStatus.Proccessing,
+                    SkillPoint = demand.First(),
+                };
+            }
+        }
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        if (await Js.Confirm(localizer["operation.confirm"]))
+        {
+            await Remover.InvokeAsync(MissionSection.Id);
+        }
+    }
+
+    private async Task TryJoinSectionAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        await MissionService.TryAddColumnAsync(MissionSection.Id, editingColumn);
+        await Reloader.InvokeAsync();
+    }
+}
+
+
+<div class="card card-body shadow-sm mt-2">
+    <h5>
+        <span class="oi oi-task"></span>
+        @MissionSection.Description
+        @if (IsOperator)
+        {
+            <button class="btn btn-outline-danger btn-sm float-right"
+                    @onclick="@(async () => await ConfirmDeleteAsync())"
+                    id="disRemBtnSec@(MissionSection.Id)" onmouseup="setButtonBuzy('disRemBtnSec@(MissionSection.Id)')">
+                @localizer["operation.delete"]
+            </button>
+        }
+        @if (demand.Count > 0)
+        {
+            <span class="h6 font-weight-normal">
+                <ModalComponent ModalButtonText="@localizer["mission.section.join"]" ModalButtonClass="float-right btn-sm mr-2">
+                    <ModalTitle>
+                        @localizer["mission.section.join"]
+                    </ModalTitle>
+                    <ModalBody>
+                        <EditForm Model="editingColumn" OnValidSubmit="TryJoinSectionAsync">
+                            <DataAnnotationsValidator></DataAnnotationsValidator>
+                            <p class="form-group">
+                                <label class="mb-1">@localizer["dashboard.member.skillpoint"]</label> <br />
+                                <InputRadioGroup @bind-Value="editingColumn.SkillPoint">
+                                    @foreach (var sp in demand)
+                                        {
+                                        <div class="custom-control custom-radio custom-control-inline">
+                                            <InputRadio Value="sp" class="custom-control-input" id="@($"sp{sp}")">
+                                                @sp
+                                            </InputRadio>
+                                            <label class="custom-control-label" for="@($"sp{sp}")">@localizer[$"sp.{sp}"]</label>
+                                        </div>
+                                        }
+                                </InputRadioGroup>
+                                <ValidationMessage For="@(() => editingColumn.SkillPoint)"></ValidationMessage>
+                            </p>
+
+                            <p class="form-group">
+                                <label>@localizer["mission.column.note"]</label>
+                                <InputText @bind-Value="editingColumn.Note" class="form-control"></InputText>
+                                <ValidationMessage For="@(() => editingColumn.Note)"></ValidationMessage>
+                            </p>
+
+                            <hr />
+                            <button class="btn btn-outline-primary" type="submit"
+                                    id="secJoinBtn" onmouseup="setButtonBuzy('secJoinBtn')">
+                                @localizer["operation.submit"]
+                            </button>
+                        </EditForm>
+                    </ModalBody>
+                </ModalComponent>
+            </span>
+        }
+    </h5>
+
+    <table class="table table-striped mb-0">
+        <thead>
+            <tr class="d-flex">
+                <th class="col-sm-1">
+                    @localizer["dashboard.member.skillpoint"]
+                </th>
+                <th class="col-sm-3">
+                    @localizer["user.username"]
+                </th>
+                <th class="col-sm-8">
+                    @localizer["mission.column.note"]
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (MissionSection.Demands != null)
+            {
+                @foreach (var kv in MissionSection.Demands)
+                {
+                    var cols = MissionSection.MissionColumns?.Where(col => col.SkillPoint == kv.Key);
+                    for (int i = 0; i < cols?.Count(); i++)
+                    {
+                        <MissionColumnContainer MissionColumn="cols.ElementAt(i)" Reloader="Reloader"></MissionColumnContainer>
+                    }
+                    for (int i = 0; i < kv.Value - cols?.Count(); i++)
+                    {
+                        <tr class="d-flex table-secondary">
+                            <td class="col-sm-1">
+                                @localizer[$"sp.{kv.Key}"]
+                            </td>
+                            <td class="col-sm-11">
+                                @localizer["mission.column.status.Empty"]
+                            </td>
+                        </tr>
+                    }
+                }
+            }
+        </tbody>
+    </table>
+
+</div>

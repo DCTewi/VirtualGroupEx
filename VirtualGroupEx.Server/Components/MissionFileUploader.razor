@@ -1,0 +1,194 @@
+@using System.Threading
+
+@implements IDisposable
+
+@inject UserInfoService UserInfo
+@inject CurrentUserService CurrentUser
+@inject UploadService Uploader
+@inject NavigationManager NavigationManager
+@inject PreferenceService Preference 
+
+@code
+{
+    [Parameter] public Mission Mission { get; set; }
+
+    private List<UploadFileInfo> fileInfos = new();
+
+    protected override void OnInitialized()
+    {
+        fileInfos = Uploader.GetFileInfoByMissionId(Mission.Id);
+    }
+
+    private const long maxFileSize = 1024 * 1024 * 10; // 10Mbit
+    private const int bufferSize = 4 * 1024 * 5; // 5KB
+
+    private IBrowserFile loadedFile;
+    private CancellationTokenSource cancelation = new CancellationTokenSource();
+
+    private ActionWaiter waiter = new();
+
+    private bool canUpload = false;
+
+    private bool displayProgress = false;
+    private int progressPercent;
+
+    private string errorMsg = string.Empty;
+
+    private void LoadFile(InputFileChangeEventArgs e)
+    {
+        if (waiter.CantInvoke) return;
+
+        loadedFile = e.File;
+
+        errorMsg = string.Empty;
+        canUpload = true;
+
+        waiter.EndInvoke();
+    }
+
+    private void ReloadPage()
+    {
+        NavigationManager.NavigateTo($"/mission/{Mission.Id}", forceLoad: true);
+    }
+
+    private async Task UploadFile()
+    {
+        if (waiter.CantInvoke) return;
+        canUpload = false;
+
+        if (loadedFile.Size > maxFileSize)
+        {
+            errorMsg = localizer["mission.file.error"];
+            StateHasChanged();
+        }
+        else
+        {
+            try
+            {
+                await using var fs = await Uploader.GenerateFileInfoAsync(Mission.Id, loadedFile.Name);
+                //await loadedFile.OpenReadStream(maxFileSize).CopyToAsync(fs, cancelation.Token);
+
+                await using var stream = loadedFile.OpenReadStream(maxFileSize);
+
+                var buffer = new byte[bufferSize];
+                int bytesRead;
+                double totalRead = 0;
+
+                displayProgress = true;
+
+                while ((bytesRead = await stream.ReadAsync(buffer, cancelation.Token)) != 0)
+                {
+                    totalRead += bytesRead;
+                    await fs.WriteAsync(buffer, cancelation.Token);
+
+                    progressPercent = (int)((totalRead / loadedFile.Size) * 100);
+                    StateHasChanged();
+                }
+
+                displayProgress = false;
+            }
+            catch
+            {
+                errorMsg = localizer["mission.file.error"];
+                StateHasChanged();
+            }
+
+            ReloadPage();
+        }
+
+        waiter.EndInvoke();
+    }
+
+    private async Task RemoveFileAsync(string infoId)
+    {
+        if (waiter.CantInvoke) return;
+
+        await Uploader.RemoveFileInfoAsync(infoId);
+        ReloadPage();
+
+        waiter.EndInvoke();
+    }
+
+    public void Dispose()
+    {
+        cancelation.Cancel();
+    }
+}
+
+<div class="card card-body shadow-sm my-2">
+    <h5><span class="oi oi-file"></span>@localizer["mission.file.cardTitle"]</h5>
+    @if (fileInfos == null)
+    {
+
+    }
+    else if (fileInfos.Count <= 0)
+    {
+        <hr />
+        <div class="text-secondary mb-4">
+            @localizer["mission.file.empty"]
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover">
+                @foreach (var info in fileInfos)
+                {
+                    var user = UserInfo.GetUserById(info.UploaderId);
+                    <tr>
+                        <td>
+                            <a target="_blank" href="/file@(Uploader.GetFileQueryString(info?.Id))">
+                                @info.OriginName
+                            </a>
+                        </td>
+                        <td>
+                            <a href="/user/@user.Qid">
+                                @user.NickName
+                            </a>
+                        </td>
+                        <td>
+                            @info.UploadTime.ToString("yyyy-MM-dd HH:mm")
+                        </td>
+                        <td>
+                            @if (CurrentUser.User.Id == info.UploaderId || CurrentUser.User.IsOperator)
+                            {
+                                <button class="btn btn-outline-danger btn-sm" @onclick="@(async () => await RemoveFileAsync(info.Id))">
+                                    @localizer["operation.delete"]
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </table>
+        </div>
+    }
+
+    @if ((fileInfos?.Count ?? 0) < (~Preference).FilePerMission)
+    {
+        var progressCss = "progress " + (displayProgress ? "" : "d-none");
+        var progressWidthStyle = progressPercent + "%";
+
+        <form method="dialog" class="form-inline">
+            <p class="input-group mb-2">
+                <label class="pb-2 mr-2">@localizer["mission.file"]</label>
+                <InputFile OnChange="LoadFile" AdditionalAttributes="@(new Dictionary<string, object> { { "class", "custom-file" } })"></InputFile>
+            </p>
+            @if (canUpload)
+            {
+                <button class="btn btn-outline-primary btn-sm mb-3" @onclick="UploadFile">
+                    @localizer["operation.upload"]
+                </button>
+            }
+        </form>
+
+        <div class="@progressCss">
+            <div class="progress-bar" role="progressbar" style="width:@progressWidthStyle" area-valuenow="@progressPercent" aria-minvalue="0" aria-maxvalue="100"></div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMsg))
+        {
+            <div class="text-danger">@errorMsg</div>
+        }
+    }
+
+</div>

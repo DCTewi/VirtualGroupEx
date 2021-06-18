@@ -1,0 +1,55 @@
+@inject MissionService MissionService
+@inject UserInfoService UserInfo
+@inject PreferenceService Preference 
+
+@code
+{
+    [Parameter] public Mission Mission { get; set; }
+
+    protected List<MissionColumn> GetSectionColumns(int sectionId)
+    {
+
+        var section = MissionService.GetSectionIncludingColumns(sectionId);
+        section.MissionColumns.Sort((a, b) =>
+        {
+            if (a.SkillPoint == b.SkillPoint)
+            {
+                return a.Id.CompareTo(b.Id);
+            }
+            else
+            {
+                return a.SkillPoint.CompareTo(b.SkillPoint);
+            }
+        });
+        return section.MissionColumns;
+    }
+}
+
+<div class="card card-body shadow-sm my-2">
+    <div class="text-monospace text-secondary">
+        <p>
+            @((~Preference).DescriptionOriginPrefix)
+            @Mission.OriginInfo
+            @((~Preference).DescriptionOriginPostfix) <br />
+        </p>
+
+        @foreach (var section in Mission.Sections)
+        {
+            var cols = GetSectionColumns(section.Id);
+            <p>
+                @foreach (var col in cols)
+                {
+                    @localizer[$"sp.{col.SkillPoint}"]
+                    <span>:</span>@UserInfo.GetUserById(col.UserId).NickName
+                    <br />
+                }
+            </p>
+        }
+        @if (!string.IsNullOrEmpty((~Preference).DescriptionPostfix))
+        {
+            <p>
+                @((MarkupString)Markdig.Markdown.ToHtml((~Preference).DescriptionPostfix))
+            </p>
+        }
+    </div>
+</div>

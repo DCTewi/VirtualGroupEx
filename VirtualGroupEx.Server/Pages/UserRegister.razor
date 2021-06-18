@@ -1,0 +1,138 @@
+@page "/register"
+@attribute [AllowAnonymous]
+
+@inject NavigationManager NavigationManager
+@inject RegisterService RegisterManager
+@inject SignInManager<User> SignInManager
+@inject UserManager<User> UserManager
+@inject CurrentUserService CurrentUser
+@inject JSInvokeService Js
+@inject ILogger<UserRegister> Logger
+
+@code
+{
+    public class InputModel
+    {
+        [Required, MaxLength(50)]
+        public string UserName { get; set; }
+
+        [Required, MaxLength(50)]
+        public string NickName { get; set; }
+
+        [Required]
+        public long Qid { get; set; }
+
+        [Required, DataType(DataType.Password)]
+        [StringLength(100, MinimumLength = 6)]
+        public string Password { get; set; }
+
+        [Required, DataType(DataType.Password)]
+        [Compare("Password")]
+        public string ConfirmPassword { get; set; }
+    }
+
+    private InputModel input;
+    private bool registerFailed = false;
+    private string registerFailedMessage;
+    private ActionWaiter waiter = new ActionWaiter();
+
+    protected override void OnInitialized()
+    {
+        input = new InputModel();
+    }
+
+    public async Task OnSubmitAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        if (input.Password != input.ConfirmPassword)
+        {
+            registerFailed = true;
+            waiter.EndInvoke();
+            return;
+        }
+
+        Logger.LogInformation(
+            $"IP[{CurrentUser.IPAddress}] Register attempt for user [{input.UserName}]");
+
+        var result = await RegisterManager.TryRegisterAsync(new User
+        {
+            UserName = input.UserName,
+            NickName = input.NickName,
+            Qid = input.Qid,
+        }, input.Password);
+
+        if (result.Succeeded)
+        {
+            Logger.LogInformation(
+                $"IP[{CurrentUser.IPAddress}] User [{input.UserName}] registered");
+
+            NavigationManager.NavigateTo("/login");
+        }
+        else
+        {
+            Logger.LogInformation(
+                $"IP[{CurrentUser.IPAddress}] User [{input.UserName}] register failed");
+
+            registerFailedMessage = string.Join("<br>", result.Errors.Select(e => e.Description).ToArray());
+            registerFailed = true;
+            input = new InputModel();
+            await Js.ResetButtonAsync();
+        }
+        waiter.EndInvoke();
+    }
+}
+
+<h2>
+    @localizer["nav.register"]
+</h2>
+
+<hr />
+
+@if (registerFailed)
+{
+    <div class="alert alert-danger col-12 col-md-8" role="alert">
+        <strong>@localizer["msg.registerFailed"]</strong> @((MarkupString)registerFailedMessage)
+    </div>
+}
+
+<EditForm Model="input"
+          OnValidSubmit="OnSubmitAsync">
+    <DataAnnotationsValidator></DataAnnotationsValidator>
+
+    <p class="form-group col-12 col-md-8">
+        <label>@localizer["register.username"]</label>
+        <InputText @bind-Value="input.UserName" class="form-control"></InputText>
+        <ValidationMessage For="@(() => input.UserName)"></ValidationMessage>
+    </p>
+
+    <p class="form-group col-12 col-md-8">
+        <label>@localizer["register.nickname"]</label>
+        <InputText @bind-Value="input.NickName" class="form-control"></InputText>
+        <ValidationMessage For="@(() => input.NickName)"></ValidationMessage>
+    </p>
+
+    <p class="form-group col-12 col-md-8">
+        <label>@localizer["register.qq"]</label>
+        <InputNumber @bind-Value="input.Qid" class="form-control"></InputNumber>
+        <ValidationMessage For="@(() => input.Qid)"></ValidationMessage>
+    </p>
+
+    <p class="form-group col-12 col-md-8">
+        <label>@localizer["register.password"]</label>
+        <InputText @bind-Value="input.Password" class="form-control" type="password"></InputText>
+        <ValidationMessage For="@(() => input.Password)"></ValidationMessage>
+    </p>
+
+    <p class="form-group col-12 col-md-8">
+        <label>@localizer["register.confirm"]</label>
+        <InputText @bind-Value="input.ConfirmPassword" class="form-control" type="password"></InputText>
+        <ValidationMessage For="@(() => input.ConfirmPassword)"></ValidationMessage>
+    </p>
+
+    <button class="btn btn-outline-primary" type="submit"
+            id="registerBtn" onclick="setButtonBuzy('registerBtn')">
+        @localizer["operation.register"]
+    </button>
+
+</EditForm>

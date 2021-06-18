@@ -1,0 +1,278 @@
+@page "/user/{qid:long?}"
+
+@inject NavigationManager NavigationManager
+@inject UserInfoService UserInfo
+@inject CurrentUserService CurrentUser
+@inject DiscussionService DiscussionService
+@inject MissionService MissionService
+@inject RoutineService RoutineService
+@inject PreferenceService Preference
+
+@code
+{
+    public class UserWithColumnCount
+    {
+        public User User { get; set; }
+
+        public int ColumnCount { get; set; }
+
+        public int ColumnCountLastMonth { get; set; }
+    }
+
+    [Parameter] public long? qid { get; set; }
+
+    private ActionWaiter waiter = new();
+
+    private User user;
+    private List<MissionColumn> missionColumns;
+    private List<Discussion> discussions;
+    private List<DiscussionPost> discussionPosts;
+    private List<Routine> routines;
+
+    private int colPage = 1;
+    private int discussionPage = 1;
+    private int routinePage = 1;
+
+    private void LoadMore(int type)
+    {
+        if (waiter.CantInvoke) return;
+
+        if (type == 1) colPage++;
+        else if (type == 2) discussionPage++;
+        else routinePage++;
+
+        StateHasChanged();
+        waiter.EndInvoke();
+    }
+
+    protected override void OnInitialized()
+    {
+        if (qid != null && user == null)
+        {
+            user = UserInfo.GetUserByQid(qid.Value);
+            if (user != null)
+            {
+                missionColumns = MissionService.GetColumnsByUserId(user.Id);
+                discussions = DiscussionService.GetByUserId(user.Id);
+                discussionPosts = DiscussionService.GetPostsByUserId(user.Id);
+                routines = RoutineService.GetByUserId(user.Id);
+            }
+        }
+    }
+}
+
+@if (qid == null)
+{
+    List<UserWithColumnCount> userDetailList = new();
+    UserInfo.GetAll().ForEach(u =>
+        userDetailList.Add(new UserWithColumnCount()
+        {
+            User = u,
+            ColumnCount = MissionService.GetColumnsCountByUserId(u.Id),
+            ColumnCountLastMonth = MissionService.GetColumnsCountLastMonthByUserId(u.Id),
+        }));
+    userDetailList.Sort((a, b) =>
+    {
+        if (a.ColumnCountLastMonth == b.ColumnCountLastMonth)
+        {
+            return -a.ColumnCount.CompareTo(b.ColumnCount);
+        }
+        return -a.ColumnCountLastMonth.CompareTo(b.ColumnCountLastMonth);
+    });
+
+    <h2>@localizer["nav.user"]</h2>
+    <hr />
+
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-borderless">
+                <tr>
+                    <td>
+                        @localizer["user.nickname"]
+                    </td>
+                    <td>
+                        @localizer["user.qq"]
+                    </td>
+                    <td>
+                        @localizer["user.columnsCountLastMonth"]
+                    </td>
+                    <td>
+                        @localizer["user.columnsCount"]
+                    </td>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in userDetailList)
+                {
+                    <tr>
+                        <td>
+                            <a href="/user" @onclick="@(() => NavigationManager.NavigateTo($"/user/{user.User.Qid}", forceLoad: true))">@user.User.NickName</a>
+                        </td>
+                        <td>
+                            @user.User.Qid
+                        </td>
+                        <td>
+                            @user.ColumnCountLastMonth
+                        </td>
+                        <td>
+                            @user.ColumnCount
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    @if (user == null || user.Available == false)
+    {
+        <h4>@localizer["user.notfound"]</h4>
+    }
+    else
+    {
+        <h4>@user.NickName</h4>
+        <hr />
+
+
+        <div class="card card-body shadow-sm pb-2">
+            <dl class="row mb-0">
+                <dd class="col-sm-6">
+                    <b>@localizer["user.qq"]:</b>
+                    @user.Qid
+                </dd>
+                <dd class="col-sm-12">
+                    <b>@localizer["user.sp"]:</b>
+                    @foreach (var sp in user.SkillPoints)
+                    {
+                        <span class="mr-1">@localizer[$"sp.{sp}"]</span>
+                    }
+                </dd>
+                <dd class="col-sm-6">
+                    <b>@localizer["user.columnsCount"]:</b>
+                    @missionColumns?.Count
+                </dd>
+                <dd class="col-sm-6">
+                    <b>@localizer["user.columnsCountLastMonth"]:</b>
+                    @missionColumns?.Count(col => col.JoinTime.AddDays(30).CompareTo(DateTime.Now) > 0)
+                </dd>
+                <dd class="col-sm-6">
+                    <b>@localizer["user.routineCount"]:</b>
+                    @routines?.Count
+                </dd>
+                <dd class="col-sm-6">
+                    <b>@localizer["user.discussionCount"]:</b>
+                    @discussions?.Count
+                </dd>
+                <dd class="col-sm-6">
+                    <b>@localizer["user.discussionPostCount"]:</b>
+                    @discussionPosts?.Count
+                </dd>
+                <dd class="col-sm-6">
+                    <b>@localizer["user.lastPostTime"]:</b>
+                    @((discussionPosts?.FirstOrDefault()?.CreationTime ?? DateTime.MinValue).ToString("yyyy-MM-dd HH:mm:ss"))
+                </dd>
+            </dl>
+        </div>
+
+        <br />
+
+        @if ((missionColumns?.Count ?? 0) > 0)
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <tbody>
+                        <tr>
+                            <th colspan="4">
+                                @localizer["user.columns"]
+                            </th>
+                        </tr>
+                        @foreach (var col in missionColumns.GetRange(0, Math.Min(colPage * (~Preference).PageCapacity, missionColumns.Count)))
+                        {
+                            var mission = MissionService.GetMissionBySectionId(col.MissionSectionId);
+
+                            <tr class="@(col.Status == MissionColumnStatus.Completed ? "table-success" : "table-warning")">
+                                <td>
+                                    <a href="/mission/@mission.Id">@mission.Title</a>
+                                </td>
+                                <td>
+                                    @localizer[$"sp.{col.SkillPoint}"]
+                                </td>
+                                <td>
+                                    @localizer[$"mission.column.status.{col.Status}"]
+                                </td>
+                                <td>
+                                    @col.JoinTime.ToString("yyyy-MM-dd")
+                                </td>
+                            </tr>
+                        }
+                        @if (colPage * (~Preference).PageCapacity < missionColumns.Count)
+                        {
+                            <tr class="text-center text-primary">
+                                <td colspan="4">
+                                    <a role="button" @onclick="@(() => LoadMore(1))">
+                                        @localizer["operation.loadmore"]
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if ((discussions?.Count ?? 0) > 0)
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <tbody>
+                        <tr>
+                            <th colspan="4">
+                                @localizer["user.discussions"]
+                            </th>
+                        </tr>
+                        @foreach (var discussion in discussions.GetRange(0, Math.Min(discussionPage * (~Preference).PageCapacity, discussions.Count)))
+                        {
+                            <tr class="small">
+                                <td colspan="3">
+                                    <a href="/post/@discussion.Id">@discussion.Title</a>
+                                </td>
+                                <td>
+                                    @discussion.UpdateTime.ToString("yyyy-MM-dd")
+                                </td>
+                            </tr>
+                        }
+                        @if (discussionPage * (~Preference).PageCapacity < discussions.Count)
+                        {
+                            <tr class="text-center text-primary">
+                                <td colspan="4">
+                                    <a role="button" @onclick="@(() => LoadMore(2))">
+                                        @localizer["operation.loadmore"]
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if ((routines?.Count ?? 0) > 0)
+        {
+            <div class="row">
+                @foreach (var routine in routines.GetRange(0, Math.Min(routinePage * (~Preference).PageCapacity, routines.Count)))
+                {
+                    <RoutineContainer Routine="routine" Reloader="@(() => NavigationManager.NavigateTo($"/user/{qid}", forceLoad: true))"></RoutineContainer>
+                }
+            </div>
+            @if (routinePage * (~Preference).PageCapacity < routines.Count)
+            {
+                <div class="d-flex justify-content-center">
+                    <button class="btn btn-outline-primary" @onclick="@(() => LoadMore(3))">
+                        @localizer["operation.loadmore"]
+                    </button>
+                </div>
+            }
+        }
+    }
+}

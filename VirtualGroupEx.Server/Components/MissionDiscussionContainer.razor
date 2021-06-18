@@ -1,0 +1,13 @@
+
+@code
+{
+    [Parameter] public Discussion RelatedDiscussion { get; set; }
+}
+
+@if (RelatedDiscussion == null)
+{
+}
+else
+{
+    <DiscussionContainer Discussion="RelatedDiscussion" Remover="@(() => { })" IsRelatedMissionDiscussion="true"></DiscussionContainer>
+}

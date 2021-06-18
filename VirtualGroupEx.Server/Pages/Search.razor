@@ -1,0 +1,198 @@
+@page "/search"
+
+@inject SearchService SearchService
+@inject NavigationManager NavigationManager
+@inject DiscussionService DiscussService
+@inject UserInfoService UserInfo
+@inject JSInvokeService Js 
+
+@code
+{
+    private string keyword;
+
+    private List<SearchResult> searchResults = null;
+
+    private async Task SearchAsync()
+    {
+        if (!string.IsNullOrEmpty(keyword))
+        {
+            keyword = keyword?.Trim();
+            searchResults = SearchService.Search(keyword);
+            StateHasChanged();
+        }
+        await Js.ResetButtonAsync();
+    }
+
+    private async Task ReloadPage()
+    {
+        keyword = string.Empty;
+        searchResults = null;
+        await Js.ResetButtonAsync();
+    }
+}
+
+<h2>@localizer["nav.search"]</h2>
+
+<hr />
+
+<form class="col-lg-8" method="dialog">
+
+    <p class="form-group">
+        <label>@localizer["search.string"]</label>
+        <input class="form-control" @bind="keyword" />
+    </p>
+
+    <button type="button" class="btn btn-outline-primary" @onclick="SearchAsync"
+            id="searchBtn" onmouseup="setButtonBuzy('searchBtn')">
+        @localizer["operation.search"]
+    </button>
+
+</form>
+
+@if (searchResults != null)
+{
+
+    @if (searchResults.Count == 0)
+    {
+        <hr />
+        <div class="text-secondary">
+            @localizer["search.notfound"]
+        </div>
+    }
+    else
+    {
+        var users = searchResults.Where(u => u.Type == SearchResultType.User);
+        if (users.Count() > 0)
+        {
+            <hr />
+            <div class="row">
+                @foreach (var userresult in users)
+                {
+                    var user = userresult.Result as User;
+
+                    <div class="col-lg-4">
+                        <div class="card card-body">
+                            <h6 class="text-primary"><a href="/user/@user.Qid">@user.NickName</a></h6>
+                            <small>@user.Qid</small>
+                            <small>
+                                @foreach (var sp in user.SkillPoints)
+                                {
+                                    <span class="mr-1">@localizer[$"sp.{sp}"]</span>
+                                }
+                            </small>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        var missions = searchResults.Where(r => r.Type == SearchResultType.Mission);
+        if (missions.Count() > 0)
+        {
+            <hr />
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-borderless">
+                        <tr>
+                            <th scope="row">@localizer["mission.title"]</th>
+                            <th scope="row">@localizer["mission.status"]</th>
+                            <th scope="row">@localizer["mission.demands"]</th>
+                            <th scope="row">@localizer["mission.type"]</th>
+                            <th scope="row">@localizer["mission.origin"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var missionresult in missions)
+                        {
+                            var mission = missionresult.Result as Mission;
+
+                            <tr class="table-@mission.ColorString">
+                                <td>
+                                    <a role="button" class="btn-link text-body" @onclick="@(() => NavigationManager.NavigateTo($"/mission/{mission.Id}", forceLoad: true))">
+                                        @mission.Title
+                                    </a>
+                                </td>
+                                <td>@localizer[mission.StatusString]</td>
+                                <td>
+                                    <MissionDemandsBar Mission="mission"></MissionDemandsBar>
+                                </td>
+                                <td>@localizer[$"mission.type.{mission.Type}"]</td>
+                                <td>@mission.OriginInfo</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        var discussions = searchResults.Where(r => r.Type == SearchResultType.Discussion);
+        if (discussions.Count() > 0)
+        {
+            <hr />
+            <table class="table table-hover">
+                <thead class="table-borderless">
+                    <tr>
+                        <th>
+                            @localizer["discussion.title"]
+                        </th>
+                        <th class="text-right w-25">
+                            @localizer["discussion.publishDate"]
+                        </th>
+                        <th class="text-right w-25">
+                            @localizer["discussion.updateDate"]
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var discresult in discussions)
+                    {
+                        var discussion = discresult.Result as Discussion;
+                        <tr>
+                            <th class="w-50">
+                                <a class="btn-link btn-sm" @onclick="@(() => NavigationManager.NavigateTo($"/post/{discussion.Id}", forceLoad: true))">
+                                    @if (discussion.IsTopped)
+                                    {
+                                        <span class="badge badge-info mr-2">
+                                            @localizer["discussion.topped"]
+                                        </span>
+                                    }
+                                    <span class="badge badge-secondary">
+                                        @localizer[$"discussion.type.{discussion.Type}"]
+                                    </span>
+                                    @discussion.Title
+                                    <span class="text-secondary">
+                                        (@discussion.DiscussionPosts.Count)
+                                    </span>
+                                </a>
+                            </th>
+                            <td class="text-right">
+                                <small>
+                                    <span class="text-primary">@UserInfo.GetUserById(discussion.CreatorUserId).NickName</span> |
+                                    <span class="text-monospace">@discussion.CreationTime.ToString("yyyy-MM-dd")</span>
+                                </small>
+                            </td>
+                            <td class="text-right">
+                                <small>
+                                    <span class="text-primary">@UserInfo.GetUserById(DiscussService.GetLastestPostOf(discussion.Id)?.UserId ?? discussion.CreatorUserId).NickName</span> |
+                                    <span class="text-monospace">@discussion.UpdateTime.ToString("yyyy-MM-dd HH:mm")</span>
+                                </small>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        var routines = searchResults.Where(r => r.Type == SearchResultType.Routine);
+        if (routines.Count() > 0)
+        {
+            <hr />
+            <div class="row">
+                @foreach (var routineresult in routines)
+                {
+                    <RoutineContainer Routine="routineresult.Result as Routine" Reloader="ReloadPage"></RoutineContainer>
+                }
+            </div>
+        }
+    }
+}

@@ -1,0 +1,7 @@
+@code
+{
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public string Color { get; set; }
+}
+
+<span style="text-shadow: @Color 1px 0 10px, 1px 1px @Color;">@ChildContent</span>

@@ -1,0 +1,93 @@
+@inject MissionService MissionService
+@inject UserInfoService UserInfo
+@inject CurrentUserService CurrentUser
+
+@code
+{
+    [Parameter] public MissionColumn MissionColumn { get; set; }
+    [Parameter] public EventCallback Reloader { get; set; }
+
+    private ActionWaiter waiter = new ActionWaiter();
+    private bool editing = false;
+
+    private string colorString => MissionColumn.Status switch
+    {
+        MissionColumnStatus.Completed => "success",
+        MissionColumnStatus.Proccessing => "warning",
+        _ => "secondary"
+    };
+
+    private async Task ToggleStatusAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        await MissionService.ToggleMissionColumnStatusAsync(MissionColumn.Id);
+        await Reloader.InvokeAsync();
+        waiter.EndInvoke();
+    }
+
+    private async Task RemoveAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        await MissionService.RemoveColumnAsync(MissionColumn.Id);
+        await Reloader.InvokeAsync();
+        waiter.EndInvoke();
+    }
+
+    private void ToggleEdit()
+    {
+        if (waiter.CantInvoke) return;
+
+        editing = !editing;
+        waiter.EndInvoke();
+    }
+
+    private async Task UpdateAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        editing = false;
+
+        await MissionService.UpdateMissionColumnAsync(MissionColumn);
+        await Reloader.InvokeAsync();
+        waiter.EndInvoke();
+    }
+}
+
+@{ 
+    var user = UserInfo.GetUserById(MissionColumn.UserId);
+}
+
+<tr class="d-flex table-@colorString">
+    <td class="col-sm-1">@localizer[$"sp.{MissionColumn.SkillPoint}"]</td>
+    <td class="col-sm-3"><a href="/user/@user.Qid">@user.NickName</a></td>
+    @if (CurrentUser.User.Id == MissionColumn.UserId || CurrentUser.User.IsAdministrator)
+    {
+        <td class="col-sm-6">
+            @if (editing)
+            {
+                <p class="input-group m-0">
+                    <input class="form-control form-control-sm" @bind="MissionColumn.Note" />
+                    <div class="input-group-append">
+                        <button class="btn btn-outline-primary btn-sm" type="button"
+                                @onclick="UpdateAsync">@localizer["operation.submit"]</button>
+                    </div>
+                </p>
+            }
+            else
+            { 
+                @MissionColumn.Note
+            }
+        </td>
+        <td class="col-sm-2">
+            <a role="button" class="text-primary" @onclick="ToggleStatusAsync">@localizer[$"mission.column.toggle.{MissionColumn.Status}"]</a>
+            <a role="button" class="text-info" @onclick="ToggleEdit">@localizer[$"operation.edit"]</a>
+            <a role="button" class="text-danger" @onclick="RemoveAsync">@localizer[$"operation.quit"]</a>
+        </td>
+    }
+    else
+    {
+        <td class="col-sm-8">@MissionColumn.Note</td>
+    }
+</tr>

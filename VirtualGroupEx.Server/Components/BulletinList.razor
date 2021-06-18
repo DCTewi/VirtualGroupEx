@@ -1,0 +1,152 @@
+@inject CurrentUserService CurrentUser
+@inject BulleinService BulleinService
+@inject JSInvokeService Js 
+
+@code
+{
+    private List<Bulletin> bulletins;
+    private Bulletin editingBulletin;
+    private ActionWaiter waiter = new ActionWaiter();
+
+    protected override void OnInitialized()
+    {
+        bulletins = BulleinService.GetAll();
+        bulletins.Sort((a, b) => b.Priority.CompareTo(a.Priority));
+        editingBulletin = null;
+    }
+
+    private void ReloadPage()
+    {
+        OnInitialized();
+        StateHasChanged();
+    }
+
+    private void AddBulletin()
+    {
+        if (waiter.CantInvoke) return;
+
+        editingBulletin = new Bulletin
+        {
+            PublishTime = DateTime.Now,
+            Priority = 10,
+            AuthorUserId = CurrentUser.User.Id,
+        };
+
+        waiter.EndInvoke();
+    }
+
+    private void EditBulletin(Bulletin bulletin)
+    {
+        if (!waiter.QueryForInvoke()) return;
+
+        editingBulletin = bulletin;
+        editingBulletin.PublishTime = DateTime.Now;
+        editingBulletin.AuthorUserId = CurrentUser.User.Id;
+        StateHasChanged();
+
+        waiter.EndInvoke();
+    }
+
+    private async Task OnSubmitAsync()
+    {
+        if (editingBulletin == null)
+        {
+            return;
+        }
+
+        if (editingBulletin.Id == 0)
+        {
+            await BulleinService.AddAsync(editingBulletin);
+        }
+        else
+        {
+            await BulleinService.UpdateAsync(editingBulletin);
+        }
+        ReloadPage();
+    }
+
+    private async Task RemoveAsync(int id)
+    {
+        if (await Js.Confirm(localizer["operation.confirm"]))
+        {
+            await BulleinService.RemoveAsync(id);
+        }
+        ReloadPage();
+    }
+}
+
+<h2>
+    @localizer["nav.bulletin"]
+    @if (CurrentUser.User.IsOperator)
+    {
+        <span class="float-right">
+            <button class="btn btn-sm btn-outline-primary" @onclick="AddBulletin">
+                @localizer["operation.add"]
+            </button>
+        </span>
+    }
+</h2>
+
+<hr />
+
+@if (editingBulletin == null)
+{
+    @if (bulletins == null)
+    {
+        <div class="spinner-border"></div>
+    }
+    else if (bulletins.Count == 0)
+    {
+        <ListEmptyComponent></ListEmptyComponent>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var bulletin in bulletins)
+            {
+                <BulletinContainner Bulletin="bulletin" BulletEditor="EditBulletin"></BulletinContainner>
+            }
+        </div>
+    }
+}
+else if (CurrentUser.User.IsOperator)
+{
+    <EditForm Model="editingBulletin" OnValidSubmit="OnSubmitAsync">
+        <DataAnnotationsValidator></DataAnnotationsValidator>
+        <p class="form-group">
+            <label>@localizer["discussion.title"]</label>
+            <InputText @bind-Value="editingBulletin.Title" class="form-control"></InputText>
+            <ValidationMessage For="@(() => editingBulletin.Title)"></ValidationMessage>
+        </p>
+
+        <p class="form-group">
+            <label>@localizer["bulletin.priority"]</label>
+            <InputNumber @bind-Value="editingBulletin.Priority" class="form-control"></InputNumber>
+            <ValidationMessage For="@(() => editingBulletin.Priority)"></ValidationMessage>
+        </p>
+
+        <p class="form-group">
+            <label>@localizer["bulletin.content"]</label>
+            <InputTextArea @bind-Value="editingBulletin.MarkdownContent" class="form-control text-monospace" rows="12"></InputTextArea>
+            <ValidationMessage For="@(() => editingBulletin.MarkdownContent)"></ValidationMessage>
+        </p>
+
+        <button class="btn btn-outline-primary mr-2" type="submit"
+                id="bulletinSmtBtn" onclick="setButtonBuzy('bulletinSmtBtn')">
+            @localizer["operation.apply"]
+        </button>
+
+        <button class="btn btn-outline-info mr-2" @onclick="ReloadPage"
+                id="bulletinCclBtn" onmouseup="setButtonBuzy('bulletinCclBtn')">
+            @localizer["operation.cancel"]
+        </button>
+
+        @if (editingBulletin.Id != 0)
+        {
+            <button class="btn btn-outline-danger mr-2" @onclick="@(() => RemoveAsync(editingBulletin.Id))"
+                    id="bulletinRmvBtn" onmouseup="setButtonBuzy('bulletinRmvBtn')">
+                @localizer["operation.delete"]
+            </button>
+        }
+    </EditForm>
+}

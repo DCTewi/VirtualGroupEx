@@ -1,0 +1,169 @@
+@inject CurrentUserService CurrentUser
+@inject AdminService AdminService
+@inject JSInvokeService Js 
+
+@code
+{
+    private List<User> users;
+    private ActionWaiter waiter = new ActionWaiter();
+
+    protected override void OnInitialized()
+    {
+        users = AdminService.GetAllUsers();
+        users.Sort((a, b) =>
+        {
+            if (a.IsOperator != b.IsOperator)
+            {
+                return a.IsOperator ? -1 : 1;
+            }
+            else if (a.Available != b.Available)
+            {
+                return a.Available ? -1 : 1;
+            }
+            else return a.UserName.CompareTo(b.UserName);
+        });
+    }
+
+    private async Task ReloadPage()
+    {
+        await Js.ResetButtonAsync();
+        OnInitialized();
+        StateHasChanged();
+    }
+
+    private async Task SetOperatorAsync(string userId, bool toTrue)
+    {
+        if (waiter.CantInvoke) return;
+
+        await AdminService.SetOperatorAsync(userId, toTrue);
+        await ReloadPage();
+
+        waiter.EndInvoke();
+    }
+
+    private async Task BanAsync(string userId, bool unban)
+    {
+        if (waiter.CantInvoke) return;
+
+        await AdminService.BanAsync(userId, unban);
+        await ReloadPage();
+
+        waiter.EndInvoke();
+    }
+
+    private async Task DeleteAsync(string userId)
+    {
+        if (waiter.CantInvoke) return;
+
+        if (await Js.Confirm("Are you sure to delete this user?"))
+        {
+            await AdminService.TryDeleteUserAsync(userId);
+            await ReloadPage();
+        }
+
+        waiter.EndInvoke();
+    }
+
+    private async Task ResetAsync(string userId)
+    {
+        if (waiter.CantInvoke) return;
+
+        if (await Js.Confirm("Reset this user's password to Aa1234 ?"))
+        {
+            await AdminService.ResetUserPasswordAsync(userId, "Aa1234");
+            await ReloadPage();
+        }
+
+        waiter.EndInvoke();
+    }
+}
+
+@if (users == null || users.Count == 0)
+{
+    // Wait, it's impossible!
+    <ListEmptyComponent></ListEmptyComponent>
+}
+else
+{
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>
+                    @localizer["dashboard.member.username"]
+                </th>
+                <th>
+                    @localizer["dashboard.member.qq"]
+                </th>
+                <th>
+                    @localizer["dashboard.member.nickname"]
+                </th>
+                <th class="w-50">
+                    @localizer["dashboard.member.skillpoint"]
+                </th>
+                <th>
+                    @localizer["dashboard.member.operation"]
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in users)
+            {
+                <tr>
+                    <td>
+                        <span class="text-monospace">
+                            @user.UserName
+                        </span>
+                        @if (user.IsOperator)
+                        {
+                            <span class="@(user.IsAdministrator ? "text-primary" : "text-info")">&lt;@localizer["sp.op"]&gt;</span>
+                        }
+                        @if (!user.Available)
+                        {
+                            <span class="text-danger">&lt;@localizer["sp.banned"]&gt;</span>
+                        }
+                    </td>
+                    <td class="text-monospace">
+                        @user.Qid
+                    </td>
+                    <td>
+                        @user.NickName
+                    </td>
+                    <td>
+                        <UserSkillPointComponent User="user" Reloader="StateHasChanged"></UserSkillPointComponent>
+                    </td>
+                    <td class="p-2">
+                        @if (CurrentUser.User.IsAdministrator && user.Id != CurrentUser.User.Id)
+                        {
+                            <button class="btn btn-sm btn-secondary mr-2"
+                                    @onclick="@(async () => await ResetAsync(user.Id))"
+                                    id="ResetBtn-@user.UserName" onmouseup="setButtonBuzy('ResetBtn-@user.UserName')">
+                                @localizer["dashboard.member.operation.reset"]
+                            </button>
+                            <button class="btn btn-sm btn-danger mr-2"
+                                    @onclick="@(async () => await DeleteAsync(user.Id))"
+                                    id="DeleteBtn-@user.UserName" onmouseup="setButtonBuzy('DeleteBtn-@user.UserName')">
+                                @localizer["operation.delete"]
+                            </button>
+                            @if (user.Available)
+                            {
+                                <button class="btn btn-sm mr-2 @(user.IsOperator ? "btn-danger" : "btn-info")"
+                                        @onclick="@(async () => await SetOperatorAsync(user.Id, !user.IsOperator))"
+                                        id="TogOpBtn-@user.UserName" onmouseup="setButtonBuzy('TogOpBtn-@user.UserName')">
+                                    @localizer["dashboard.member.operation.op"]
+                                </button>
+                            }
+                        }
+                        @if (user.Id != CurrentUser.User.Id && !user.IsOperator)
+                        {
+                            <button class="btn btn-sm @(user.Available ? "btn-outline-danger" : "btn-primary")"
+                                    @onclick="@(async () => await BanAsync(user.Id, !user.Available))"
+                                    id="TogBanBtn-@user.UserName" onmouseup="setButtonBuzy('TogBanBtn-@user.UserName')">
+                                @localizer[user.Available ? "dashboard.member.operation.ban" : "dashboard.member.operation.unban"]
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

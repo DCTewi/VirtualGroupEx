@@ -1,0 +1,27 @@
+﻿@code
+{
+    [Parameter] public RenderFragment ModalTitle { get; set; }
+    [Parameter] public RenderFragment ModalBody { get; set; }
+    [Parameter] public string ModalButtonText { get; set; }
+    [Parameter] public string ModalButtonClass { get; set; }
+
+    private string RandomId = Math.Abs(Guid.NewGuid().GetHashCode()).ToString();
+}
+
+<button type="button" class="btn btn-outline-primary @ModalButtonClass" data-toggle="modal" data-target="#Modal@(RandomId)">
+    @ModalButtonText
+</button>
+
+<div class="modal fade" id="Modal@(RandomId)">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">@ModalTitle</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                @ModalBody
+            </div>
+        </div>
+    </div>
+</div>

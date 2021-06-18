@@ -1,0 +1,47 @@
+@page "/dashboard"
+
+@inject CurrentUserService CurrentUser
+@inject NavigationManager NavigationManager
+
+@code
+{
+    protected override void OnInitialized()
+    {
+        if (!CurrentUser.User.IsOperator)
+        {
+            NavigationManager.NavigateTo("/");
+        }
+    }
+}
+
+@if (CurrentUser.User.IsOperator)
+{
+    <ul class="nav nav-tabs" id="myTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <a class="nav-link active" id="member-tab" data-toggle="tab" href="#member" role="tab" aria-controls="member" aria-selected="true">
+                @localizer["dashboard.member"]
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" id="qid-tab" data-toggle="tab" href="#qid" role="tab" aria-controls="qid" aria-selected="false">
+                @localizer["dashboard.qq"]
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" id="config-tab" data-toggle="tab" href="#config" role="tab" aria-controls="config" aria-selected="false">
+                @localizer["dashboard.site"]
+            </a>
+        </li>
+    </ul>
+    <div class="tab-content" id="myTabContent">
+        <div class="tab-pane fade show active" id="member" role="tabpanel" aria-labelledby="member-tab">
+            <DashboradUserManageComponent></DashboradUserManageComponent>
+        </div>
+        <div class="tab-pane fade" id="qid" role="tabpanel" aria-labelledby="qid-tab">
+            <DashboardQidManageComponent></DashboardQidManageComponent>
+        </div>
+        <div class="tab-pane fade" id="config" role="tabpanel" aria-labelledby="config-tab">
+            <DashboardPreferenceComponent></DashboardPreferenceComponent>
+        </div>
+    </div>
+}

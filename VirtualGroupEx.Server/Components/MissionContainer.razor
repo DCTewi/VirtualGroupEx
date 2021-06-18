@@ -1,0 +1,306 @@
+@inject MissionService MissionService
+@inject UserInfoService UserInfo
+@inject CurrentUserService CurrentUser
+@inject DiscussionService DiscussionService
+@inject NavigationManager NavigationManager
+@inject JSInvokeService Js
+
+@code
+{
+    [Parameter] public Mission Mission { get; set; }
+    [Parameter] public EventCallback<int> Remover { get; set; }
+    [Parameter] public EventCallback<Mission> Updater { get; set; }
+
+    public class InputModel
+    {
+        public class ValueWrapper
+        {
+            public int Value { get; set; }
+        }
+
+        public int MissionId { get; set; }
+
+        [MaxLength(6)]
+        public string Description { get; set; }
+
+        public Dictionary<SkillPoint, ValueWrapper> Demands { get; set; }
+
+        public InputModel(int missionId)
+        {
+            MissionId = missionId;
+            Demands = new Dictionary<SkillPoint, ValueWrapper>();
+
+            foreach (var sp in (SkillPoint[])Enum.GetValues(typeof(SkillPoint)))
+            {
+                Demands.Add(sp, new ValueWrapper { Value = 0 });
+            }
+        }
+
+        public MissionSection ToMissionSection()
+        {
+            var resultDemands = Demands
+                .Where(kvp => kvp.Value.Value != 0)
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Value);
+
+            return new MissionSection
+            {
+                MissionId = MissionId,
+                Description = Description,
+                Demands = resultDemands
+            };
+        }
+    }
+
+    private Mission editingMission;
+    private Discussion relatedDiscussion;
+    private InputModel input;
+    private ActionWaiter waiter = new ActionWaiter();
+
+    protected override void OnInitialized()
+    {
+        relatedDiscussion = DiscussionService.GetById(Mission.DiscussionId);
+        input = new InputModel(Mission.Id);
+        editingMission = new Mission
+        {
+            Title = Mission.Title,
+            Priority = Mission.Priority,
+            OriginInfo = Mission.OriginInfo,
+            Type = Mission.Type,
+            Status = Mission.Status,
+            Length = Mission.Length,
+            Description = Mission.Description
+        };
+    }
+
+    private void ReloadPage()
+    {
+        NavigationManager.NavigateTo($"/mission/{Mission.Id}", forceLoad: true);
+        waiter.EndInvoke();
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        if (await Js.Confirm(localizer["operation.confirm"]))
+        {
+            await Remover.InvokeAsync(Mission.Id);
+        }
+    }
+
+    private async Task UpdateAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        Mission.Title = editingMission.Title;
+        Mission.Priority = editingMission.Priority;
+        Mission.OriginInfo = editingMission.OriginInfo;
+        Mission.Type = editingMission.Type;
+        Mission.Status = editingMission.Status;
+        Mission.Length = editingMission.Length;
+        Mission.Description = editingMission.Description;
+        Mission.PublishAddress = editingMission.PublishAddress;
+
+        await Updater.InvokeAsync(Mission);
+    }
+
+    private async Task AddSectionAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        await MissionService.AddSectionAsync(input.ToMissionSection());
+        ReloadPage();
+    }
+
+    private async Task RemoveSectionAsync(int sectionId)
+    {
+        await MissionService.RemoveSectionAsync(sectionId);
+        ReloadPage();
+    }
+}
+
+<h4>
+    @Mission.Title
+    @if (relatedDiscussion != null)
+    { 
+        <small class="ml-2 text-secondary">
+            <small>
+                @localizer["discussion.relatedto"]: [<a href="/post/@relatedDiscussion.Id">@relatedDiscussion.Title</a>]
+            </small>
+        </small>
+    }
+    <span class="h6 font-weight-normal">
+
+        @if (CurrentUser.User.Id == Mission.CreatorUserId || CurrentUser.User.IsOperator)
+        {
+            <button class="btn btn-outline-danger btn-sm float-right"
+                    @onclick="@(async () => await ConfirmDeleteAsync())"
+                    id="disRemBtn" onmouseup="setButtonBuzy('disRemBtn')">
+                @localizer["operation.delete"]
+            </button>
+
+            <ModalComponent ModalButtonText="@localizer["mission.update"]" ModalButtonClass="float-right btn-sm mr-2">
+                <ModalTitle>@localizer["mission.update"]</ModalTitle>
+                <ModalBody>
+                    <EditForm Model="editingMission" OnValidSubmit="UpdateAsync">
+                        <DataAnnotationsValidator></DataAnnotationsValidator>
+                        <p class="form-group">
+                            <label>@localizer["mission.title"]</label>
+                            <InputText @bind-Value="editingMission.Title" class="form-control"></InputText>
+                            <ValidationMessage For="@(() => editingMission.Title)"></ValidationMessage>
+                        </p>
+                        <p class="form-group">
+                            <label>@localizer["mission.priority"]<small>@localizer["mission.priority.info"]</small></label>
+                            <InputNumber @bind-Value="editingMission.Priority" class="form-control"></InputNumber>
+                            <ValidationMessage For="@(() => editingMission.Priority)"></ValidationMessage>
+                        </p>
+                        <p class="form-group">
+                            <label>@localizer["mission.type"]</label>
+                            <InputSelect @bind-Value="editingMission.Type" class="custom-select">
+                                @foreach (var type in (MissionType[])Enum.GetValues(typeof(MissionType)))
+                                    {
+                                    <option value="@type">@localizer[$"mission.type.{type}"]</option>
+                                    }
+                            </InputSelect>
+                        </p>
+                        <p class="form-group">
+                            <label>@localizer["mission.status"]</label>
+                            <InputSelect @bind-Value="editingMission.Status" class="custom-select">
+                                @foreach (var status in (MissionStatus[])Enum.GetValues(typeof(MissionStatus)))
+                                    {
+                                    <option value="@status">@localizer[$"mission.status.{status}"]</option>
+                                    }
+                            </InputSelect>
+                        </p>
+                        <p class="form-group">
+                            <label>@localizer["mission.origin"]</label>
+                            <InputText @bind-Value="editingMission.OriginInfo" class="form-control"></InputText>
+                            <ValidationMessage For="@(() => editingMission.OriginInfo)"></ValidationMessage>
+                        </p>
+                        <p class="form-group">
+                            <label>@localizer["mission.length"]</label>
+                            <InputText @bind-Value="editingMission.Length" class="form-control"></InputText>
+                            <ValidationMessage For="@(() => editingMission.Length)"></ValidationMessage>
+                        </p>
+                        <p class="form-group">
+                            <label>@localizer["mission.publishAddress"]</label>
+                            <InputText @bind-Value="editingMission.PublishAddress" class="form-control"></InputText>
+                            <ValidationMessage For="@(() => editingMission.PublishAddress)"></ValidationMessage>
+                        </p>
+                        <p class="form-group">
+                            <label>@localizer["mission.description"]</label>
+                            <InputTextArea @bind-Value="editingMission.Description" class="form-control" rows="6"></InputTextArea>
+                            <ValidationMessage For="@(() => editingMission.Description)"></ValidationMessage>
+                        </p>
+
+                        <button class="btn btn-outline-primary mr-2" type="submit"
+                                id="misBtn" onclick="setButtonBuzy('misBtn')">
+                            @localizer["operation.submit"]
+                        </button>
+                    </EditForm>
+                </ModalBody>
+            </ModalComponent>
+        }
+
+        <ModalComponent ModalButtonText="@localizer["mission.section.add"]" ModalButtonClass="float-right btn-sm mr-2">
+            <ModalTitle>
+                @localizer["mission.section.add"]
+            </ModalTitle>
+            <ModalBody>
+                <EditForm Model="input" OnValidSubmit="AddSectionAsync">
+                    <DataAnnotationsValidator></DataAnnotationsValidator>
+                    <p class="form-group">
+                        <label>@localizer["mission.section.description"]</label>
+                        <InputText @bind-Value="input.Description" class="form-control"></InputText>
+                        <ValidationMessage For="@(() => input.Description)"></ValidationMessage>
+                    </p>
+                    @foreach (var kvp in input.Demands)
+                    {
+                        <p class="form-group">
+                            <label>@localizer[$"sp.{kvp.Key}"]</label>
+                            <InputNumber @bind-Value="input.Demands[kvp.Key].Value" class="form-control form-control-sm"></InputNumber>
+                        </p>
+                    }
+                    <hr />
+                    <button class="btn btn-outline-primary" type="submit"
+                            id="secAddBtn" onmouseup="setButtonBuzy('secAddBtn')">
+                        @localizer["operation.submit"]
+                    </button>
+                </EditForm>
+            </ModalBody>
+        </ModalComponent>
+    </span>
+</h4>
+
+@{ var user = UserInfo.GetUserById(Mission.CreatorUserId); }
+
+<small class="text-primary"><a href="/user/@user.Qid">@user.NickName</a></small>
+<small class="text-monospace">@Mission.CreationTime.ToString("yyyy-MM-dd HH:mm")</small>
+
+<hr />
+
+<div class="card card-body shadow-sm pb-2">
+    <dl class="row mb-0">
+        <dd class="col-sm-6">
+            <b>@localizer["mission.title"]:</b>
+            @Mission.Title
+        </dd>
+        <dd class="col-sm-6">
+            <b>@localizer["mission.type"]:</b>
+            @localizer[$"mission.type.{Mission.Type}"]
+        </dd>
+        <dd class="col-sm-6">
+            <b>@localizer["mission.origin"]:</b>
+            @Mission.OriginInfo
+        </dd>
+        <dd class="col-sm-6">
+            <b>@localizer["mission.length"]:</b>
+            @Mission.Length
+        </dd>
+        <dd class="col-sm-6">
+            <b>@localizer["mission.status"]:</b>
+            <span class="text-@Mission.ColorString">@localizer[Mission.StatusString]</span>
+        </dd>
+
+        @if (Mission.Status != MissionStatus.Completed && Mission.Status != MissionStatus.Released)
+        {
+            <dd class="col-sm-12">
+                <b>@localizer["mission.demands"]:</b>
+                <MissionDemandsBar Mission="Mission" SmallFont="false"></MissionDemandsBar>
+            </dd>
+        }
+
+        @if (!string.IsNullOrEmpty(Mission.PublishAddress))
+        {
+            <dd class="col-sm-12">
+                <b>@localizer["mission.publishAddress"]:</b>
+                <a target="_blank" href="@Mission.PublishAddress">@Mission.PublishAddress</a>
+            </dd>
+        }
+
+        @if (!string.IsNullOrEmpty(Mission.Description))
+        {
+            <dd class="col-sm-12">
+                <b>@localizer["mission.description"]:</b>
+                @((MarkupString)Markdig.Markdown.ToHtml(Mission.Description))
+            </dd>
+        }
+
+    </dl>
+</div>
+
+<MissionFileUploader Mission="Mission"></MissionFileUploader>
+
+@foreach (var section in Mission.Sections)
+{
+    <MissionSectionContainer MissionSection="section" Remover="RemoveSectionAsync" 
+                             Reloader="ReloadPage"
+                             IsOperator="@(CurrentUser.User.IsOperator || CurrentUser.User.Id == Mission.CreatorUserId)">
+    </MissionSectionContainer>
+}
+
+<MissionDescriptionCard Mission="Mission"></MissionDescriptionCard>
+
+<hr />
+
+<MissionDiscussionContainer RelatedDiscussion="relatedDiscussion"></MissionDiscussionContainer>

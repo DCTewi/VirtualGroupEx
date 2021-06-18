@@ -1,0 +1,130 @@
+@inject AdminService AdminService
+@inject JSInvokeService Js
+
+@code
+{
+    private List<RegisteredQid> qids;
+    private string rawTextData;
+    private ActionWaiter waiter = new ActionWaiter();
+
+    protected override void OnInitialized()
+    {
+        qids = AdminService.GetAllRegisteredQid();
+        qids.Sort((a, b) =>
+        {
+            if (a.Used != b.Used)
+            {
+                return a.Used ? 1 : -1;
+            }
+            else return a.Qid.CompareTo(b.Qid);
+        });
+    }
+
+    private async Task ReloadPage()
+    {
+        await Js.ResetButtonAsync();
+        await Js.HideModalsAsync();
+        OnInitialized();
+        StateHasChanged();
+    }
+
+    private async Task UnregisterQid(long qid)
+    {
+        if (waiter.CantInvoke) return;
+
+        await AdminService.UnregisterQidAsync(qid);
+        await ReloadPage();
+
+        waiter.EndInvoke();
+    }
+
+    private async Task RegisterQidList()
+    {
+        if (waiter.CantInvoke) return;
+
+        var newQids = rawTextData
+            .Trim()
+            .Split('\n')
+            .Select(s => long.TryParse(s, out long result) ? result : 0L)
+            .Distinct()
+            .Where(q => q > 0L)
+            .ToList();
+
+        foreach (var qid in newQids)
+        {
+            if (!qids.Any(q => q.Qid == qid))
+            {
+                await AdminService.RegisterQidAsync(qid);
+            }
+        }
+        rawTextData = string.Empty;
+        await ReloadPage();
+
+        waiter.EndInvoke();
+    }
+}
+
+
+@if (qids == null || qids.Count == 0)
+{
+    // Wait, it's impossible!
+    <ListEmptyComponent></ListEmptyComponent>
+}
+else
+{
+    <ModalComponent ModalButtonText="@localizer["dashboard.qq.addButton"]" ModalButtonClass="m-2">
+        <ModalTitle>
+            @localizer["dashboard.qq.addModalTitle"]
+        </ModalTitle>
+        <ModalBody>
+            <p class="form-group">
+                <label>@localizer["dashboard.qq.addLabel"]</label>
+                <small class="text-info">@localizer["dashboard.qq.notice"]</small>
+                <textarea @bind="rawTextData" class="form-control" rows="10"></textarea>
+            </p>
+            <button class="btn btn-outline-primary" @onclick="async () => await RegisterQidList()"
+                    id="regiBtn" onmouseup="setButtonBuzy('regiBtn')">
+                @localizer["operation.submit"]
+            </button>
+        </ModalBody>
+    </ModalComponent>
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th class="w-50">
+                    @localizer["dashboard.qq.qid"]
+                </th>
+                <th>
+                    @localizer["dashboard.qq.useStatus"]
+                </th>
+                <th>
+                    @localizer["dashboard.qq.operation"]
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var qid in qids)
+            {
+                <tr>
+                    <td>
+                        <span class="text-monospace">
+                            @qid.Qid
+                        </span>
+                    </td>
+                    <td class="text-monospace @(qid.Used ? "text-success" : "text-warning")">
+                        @localizer[qid.Used ? "dashboard.qq.used" : "dashboard.qq.unused"]
+                    </td>
+                    <td class="p-2">
+                        @if (!qid.Used)
+                        {
+                            <button class="btn btn-danger btn-sm" @onclick="async () => await UnregisterQid(qid.Qid)"
+                                    id="qidRmvBtn-@qid.Id" onmouseup="setButtonBuzy('qidRmvBtn-@qid.Id')">
+                                @localizer["operation.delete"]
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

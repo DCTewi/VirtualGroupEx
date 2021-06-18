@@ -1,0 +1,37 @@
+@inject IJSRuntime JS
+
+@if (latency is null)
+{
+    <span class="text-monospace text-secondary small">...ms</span>
+}
+else
+{
+
+    <span  class="text-monospace @lagColor small">@(string.Format("{0:N2}", latency.Value.TotalMilliseconds))ms</span>
+}
+
+@code {
+    private DateTime startTime;
+    private TimeSpan? latency;
+    private string lagColor = "text-secondary";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            startTime = DateTime.UtcNow;
+            _ = await JS.InvokeAsync<string>("toString");
+            latency = DateTime.UtcNow - startTime;
+
+            lagColor = latency switch
+            {
+                _ when latency.Value.TotalMilliseconds < 100.0 => "text-success",
+                _ when latency.Value.TotalMilliseconds < 250.0 => "text-warning",
+                _ => "text-danger"
+
+            };
+
+            StateHasChanged();
+        }
+    }
+}

@@ -1,0 +1,170 @@
+@inject MissionService MissionService
+@inject CurrentUserService CurrentUser
+@inject JSInvokeService Js
+@inject PreferenceService Preference
+@inject NavigationManager NavigationManager 
+
+@code
+{
+    private List<Mission> missions;
+    private ActionWaiter waiter = new ActionWaiter();
+    private Mission editingMission;
+    private int loadedPageCount;
+
+    protected override void OnInitialized()
+    {
+        loadedPageCount = 1;
+        missions = MissionService.GetAll()
+            .OrderBy(m => m.Status)
+            .ThenByDescending(m => m.Priority)
+            .ThenByDescending(m => m.Type)
+            .ToList();
+
+        editingMission = new Mission
+        {
+            CreatorUserId = CurrentUser.User.Id,
+            Type = MissionType.LiveClip,
+            Status = MissionStatus.Processing,
+            OriginInfo = DateTime.Now.ToString("yyyyMMdd"),
+            Length = "00:00",
+        };
+        StateHasChanged();
+    }
+
+    private async Task OnSubmitAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        var id = await MissionService.AddMissionAsync(editingMission);
+        waiter.EndInvoke();
+        LoadMission(id);
+    }
+
+    private void LoadMission(int id)
+    {
+        NavigationManager.NavigateTo($"/mission/{id}", forceLoad: true);
+    }
+
+    private async Task LoadMore()
+    {
+        if (waiter.CantInvoke) return;
+
+        loadedPageCount += 1;
+        StateHasChanged();
+        await Js.ResetButtonAsync();
+        waiter.EndInvoke();
+    }
+}
+
+<h2>
+    @localizer["nav.mission"]
+    <span class="h6 font-weight-normal">
+        <ModalComponent ModalButtonText="@localizer["mission.add"]" ModalButtonClass="float-right btn-sm">
+            <ModalTitle>@localizer["mission.new"]</ModalTitle>
+            <ModalBody>
+                <EditForm Model="editingMission" OnValidSubmit="OnSubmitAsync">
+                    <DataAnnotationsValidator></DataAnnotationsValidator>
+                    <p class="form-group">
+                        <label>@localizer["mission.title"]</label>
+                        <InputText @bind-Value="editingMission.Title" class="form-control"></InputText>
+                        <ValidationMessage For="@(() => editingMission.Title)"></ValidationMessage>
+                    </p>
+                    <p class="form-group">
+                        <label>@localizer["mission.priority"]<small>@localizer["mission.priority.info"]</small></label>
+                        <InputNumber @bind-Value="editingMission.Priority" class="form-control"></InputNumber>
+                        <ValidationMessage For="@(() => editingMission.Priority)"></ValidationMessage>
+                    </p>
+                    <p class="form-group">
+                        <label>@localizer["mission.type"]</label>
+                        <InputSelect @bind-Value="editingMission.Type" class="custom-select">
+                            @foreach (var type in (MissionType[])Enum.GetValues(typeof(MissionType)))
+                            {
+                                <option value="@type">@localizer[$"mission.type.{type}"]</option>
+                            }
+                        </InputSelect>
+                    </p>
+                    <p class="form-group">
+                        <label>@localizer["mission.status"]</label>
+                        <InputSelect @bind-Value="editingMission.Status" class="custom-select">
+                            @foreach (var status in (MissionStatus[])Enum.GetValues(typeof(MissionStatus)))
+                            {
+                                <option value="@status">@localizer[$"mission.status.{status}"]</option>
+                            }
+                        </InputSelect>
+                    </p>
+                    <p class="form-group">
+                        <label>@localizer["mission.origin"]</label>
+                        <InputText @bind-Value="editingMission.OriginInfo" class="form-control"></InputText>
+                        <ValidationMessage For="@(() => editingMission.OriginInfo)"></ValidationMessage>
+                    </p>
+                    <p class="form-group">
+                        <label>@localizer["mission.length"]</label>
+                        <InputText @bind-Value="editingMission.Length" class="form-control"></InputText>
+                        <ValidationMessage For="@(() => editingMission.Length)"></ValidationMessage>
+                    </p>
+                    <p class="form-group">
+                        <label>@localizer["mission.description"]</label>
+                        <InputTextArea @bind-Value="editingMission.Description" class="form-control" rows="6"></InputTextArea>
+                        <ValidationMessage For="@(() => editingMission.Description)"></ValidationMessage>
+                    </p>
+
+                    <button class="btn btn-outline-primary mr-2" type="submit"
+                            id="misBtn" onclick="setButtonBuzy('misBtn')">
+                        @localizer["operation.submit"]
+                    </button>
+                </EditForm>
+            </ModalBody>
+        </ModalComponent>
+    </span>
+</h2>
+
+<hr />
+
+@if (missions == null || missions.Count == 0)
+{
+    <ListEmptyComponent></ListEmptyComponent>
+}
+else
+{
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead class="table-borderless">
+            <tr>
+                <th scope="row">@localizer["mission.title"]</th>
+                <th scope="row">@localizer["mission.status"]</th>
+                <th scope="row">@localizer["mission.demands"]</th>
+                <th scope="row">@localizer["mission.type"]</th>
+                <th scope="row">@localizer["mission.origin"]</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var mission in missions.GetRange(0, Math.Min(loadedPageCount * (~Preference).PageCapacity, missions.Count)))
+            {
+                <tr class="table-@mission.ColorString">
+                    <td>
+                        <a role="button" class="btn-link text-body" @onclick="@(() => LoadMission(mission.Id))">
+                            @mission.Title
+                        </a>
+                    </td>
+                    <td>@localizer[mission.StatusString]</td>
+                    <td>
+                        <MissionDemandsBar Mission="mission"></MissionDemandsBar>
+                    </td>
+                    <td>@localizer[$"mission.type.{mission.Type}"]</td>
+                    <td>@mission.OriginInfo</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+}
+
+@if (loadedPageCount * (~Preference).PageCapacity < missions.Count)
+{
+    <div class="d-flex justify-content-center">
+        <button class="btn btn-outline-primary" @onclick="LoadMore"
+                id="loadmoreBtn" onmouseup="setButtonBuzy('loadmoreBtn')">
+            @localizer["operation.loadmore"]
+        </button>
+    </div>
+}

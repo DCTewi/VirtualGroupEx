@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30907.101
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VirtualGroupEx.Server", "VirtualGroupEx.Server\VirtualGroupEx.Server.csproj", "{32A92757-D3FC-4C8F-B236-3EECEF7C10B9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{32A92757-D3FC-4C8F-B236-3EECEF7C10B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{32A92757-D3FC-4C8F-B236-3EECEF7C10B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{32A92757-D3FC-4C8F-B236-3EECEF7C10B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{32A92757-D3FC-4C8F-B236-3EECEF7C10B9}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5D887D14-4257-4576-97C8-8E320B45D16B}
+	EndGlobalSection
+EndGlobal

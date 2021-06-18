@@ -1,0 +1,45 @@
+@page "/post/{id:int?}"
+
+@inject DiscussionService DiscussService
+@inject NavigationManager NavigationManager 
+
+@code
+{
+    [Parameter] public int? Id { get; set; }
+    private Discussion singlePageDiscussion;
+    private ActionWaiter waiter = new ActionWaiter();
+
+    protected override void OnInitialized()
+    {
+        if (Id != null)
+        {
+            singlePageDiscussion = DiscussService?.GetById(Id.Value);
+            StateHasChanged();
+        }
+    }
+
+    private async Task RemoveAsync(int disId)
+    {
+        if (waiter.CantInvoke) return;
+
+        await DiscussService.RemoveAsync(disId);
+        waiter.EndInvoke();
+        NavigationManager.NavigateTo("/post", forceLoad: true);
+    }
+}
+
+@if (Id != null)
+{
+    if (singlePageDiscussion != null)
+    {
+        <DiscussionContainer Discussion="singlePageDiscussion" Remover="RemoveAsync"></DiscussionContainer>
+    }
+    else
+    {
+        <NotFoundComponent></NotFoundComponent>
+    }
+}
+else
+{
+    <DiscussionList></DiscussionList>
+}

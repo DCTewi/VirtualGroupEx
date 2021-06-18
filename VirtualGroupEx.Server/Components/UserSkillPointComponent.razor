@@ -1,0 +1,73 @@
+@inject AdminService AdminService
+@inject JSInvokeService Js
+
+@code 
+{
+    [Parameter] public User User { get; set; }
+    [Parameter] public EventCallback Reloader { get; set; }
+
+    private bool waitForApply = false;
+    private ActionWaiter waiter = new ActionWaiter();
+
+
+    private void ToggleSkillPoint(SkillPoint sp)
+    {
+        if (User.SkillPoints.Contains(sp))
+        {
+            User.SkillPoints.Remove(sp);
+        }
+        else
+        {
+            User.SkillPoints.Add(sp);
+        }
+        waitForApply = true;
+    }
+
+    private async Task ApplyToggle()
+    {
+        if (waiter.CantInvoke) return;
+
+        await AdminService.UpdateSkillPointAsync(User.Id, User.SkillPoints);
+        waitForApply = false;
+        await Js.ResetButtonAsync();
+        await Js.HideModalsAsync();
+        await Reloader.InvokeAsync();
+
+        waiter.EndInvoke();
+    }
+}
+
+<ModalLinkComponent ModalButtonClass="btn-sm p-0 m-0 text-info">
+    <ModalButtonText>
+        @if (waitForApply)
+        {
+            <span>*</span>
+        }
+        @if (User.SkillPoints.Count == 0)
+        {
+            @localizer["sp.none"]
+        }
+        else
+        {
+            @string.Join(", ", User.SkillPoints.OrderBy(sp => sp).Select(sp => localizer[$"sp.{sp}"]))
+        }
+    </ModalButtonText>
+    <ModalTitle>
+        @localizer["dashboard.member.skillpoint"]
+    </ModalTitle>
+    <ModalBody>
+        @foreach (var sp in (SkillPoint[])Enum.GetValues(typeof(SkillPoint)))
+        {
+            <button class="btn m-2 @(User.SkillPoints.Contains(sp) ? "btn-success" : "btn-secondary")"
+                    @onclick="@(() => ToggleSkillPoint(sp))">
+                @localizer[$"sp.{sp}"]
+            </button>
+        }
+        <hr />
+        <button class="btn btn-outline-success"
+                @onclick="ApplyToggle"
+                id="Update-@User.UserName-Btn" onmouseup="setButtonBuzy('Update-@User.UserName-Btn')">
+            @localizer["operation.update"]
+        </button>
+    </ModalBody>
+</ModalLinkComponent>

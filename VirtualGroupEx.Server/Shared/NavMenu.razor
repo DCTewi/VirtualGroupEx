@@ -1,0 +1,128 @@
+@inject CurrentUserService CurrentUser
+@inject SignInManager<User> SignInManager 
+@inject PreferenceService Preference 
+ 
+@code 
+{
+    private bool collapseNavMenu = true;
+
+    private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private Random random = new();
+    private string GetRandomBackgroundUri()
+    {
+        var uris = (~Preference).BackgroundUrl.Split('\n');
+
+        if (uris.Count() > 0)
+        {
+            return uris[random.Next(0, uris.Count())];
+        }
+        return "";
+    }
+}
+
+@if (!string.IsNullOrEmpty((~Preference).BackgroundUrl))
+{
+<style type="text/css">
+@@media (min-width: 641px) {
+    .sidebar-bg {
+        background: url("@GetRandomBackgroundUri()") no-repeat bottom;
+        height: 100vh;
+    }
+}
+</style>
+}
+
+<div class="sidebar-bg">
+    <div class="top-row pl-4 navbar navbar-dark">
+        <span class="navbar-brand">@((~Preference).AppTitle)</span>
+        <button class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+
+    <div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+        <ul class="nav flex-column">
+            @if (CurrentUser.Principal != null && SignInManager.IsSignedIn(CurrentUser.Principal))
+            {
+                if (CurrentUser.User.Available)
+                {
+                    <li class="nav-item px-3">
+                        <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                            <span class="oi oi-home" aria-hidden="true"></span> @localizer["nav.bulletin"]
+                        </NavLink>
+                    </li>
+                    <li class="nav-item px-3">
+                        <NavLink class="nav-link" href="/search">
+                            <span class="oi oi-magnifying-glass" aria-hidden="true"></span> @localizer["nav.search"]
+                        </NavLink>
+                    </li>
+                    <li class="nav-item px-3">
+                        <NavLink class="nav-link" href="/routine">
+                            <span class="oi oi-tags" aria-hidden="true"></span> @localizer["nav.routine"]
+                        </NavLink>
+                    </li>
+                    <li class="nav-item px-3">
+                        <NavLink class="nav-link" href="/mission">
+                            <span class="oi oi-list-rich" aria-hidden="true"></span> @localizer["nav.mission"]
+                        </NavLink>
+                    </li>
+                    <li class="nav-item px-3">
+                        <NavLink class="nav-link" href="/post">
+                            <span class="oi oi-document" aria-hidden="true"></span> @localizer["nav.discussion"]
+                        </NavLink>
+                    </li>
+                    <li class="nav-item px-3">
+                        <NavLink class="nav-link" href="/user">
+                            <span class="oi oi-people" aria-hidden="true"></span> @localizer["nav.user"]
+                        </NavLink>
+                    </li>
+                    @if (CurrentUser.User.IsOperator)
+                    {
+                        <li class="nav-item px-3">
+                            <NavLink class="nav-link" href="/dashboard">
+                                <span class="oi oi-cog" aria-hidden="true"></span> @localizer["nav.dashboard"]
+                            </NavLink>
+                        </li>
+                    }
+                    @*@if (CurrentUser.User.IsAdministrator)
+                {
+                    <li class="nav-item px-3">
+                        <NavLink class="nav-link" href="/apikey">
+                            <span class="oi oi-terminal" aria-hidden="true"></span> @localizer["nav.api"]
+                        </NavLink>
+                    </li>
+                }*@
+                }
+                <li class="nav-item px-3">
+                    <NavLink class="nav-link" href="/me">
+                        <span class="oi oi-person" aria-hidden="true"></span>
+                        @CurrentUser.User.NickName.Substring(0, Math.Min(CurrentUser.User.NickName.Length, 9))
+                        @if (CurrentUser.User.NickName.Length > 9)
+                        {
+                            <span>...</span>
+                        }
+                    </NavLink>
+                </li>
+            }
+            else
+            {
+                <li class="nav-item px-3">
+                    <NavLink class="nav-link" href="/login">
+                        <span class="oi oi-account-login" aria-hidden="true"></span> @localizer["nav.login"]
+                    </NavLink>
+                </li>
+                <li class="nav-item px-3">
+                    <NavLink class="nav-link" href="/register">
+                        <span class="oi oi-people" aria-hidden="true"></span> @localizer["nav.register"]
+                    </NavLink>
+                </li>
+            }
+        </ul>
+    </div>
+</div>

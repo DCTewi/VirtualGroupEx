@@ -1,0 +1,105 @@
+@using Markdig
+ 
+@inject CurrentUserService CurrentUser
+@inject UserInfoService UserInfo 
+@inject RoutineService RoutineService
+@inject JSInvokeService Js
+
+@code
+{
+    [Parameter] public Routine Routine { get; set; }
+    [Parameter] public EventCallback Reloader { get; set; }
+    private ActionWaiter waiter = new ActionWaiter();
+
+    public class InputModel
+    {
+        [Required, MaxLength(30)]
+        public string Type { get; set; }
+        [Required, MaxLength(300)]
+        public string Content { get; set; }
+    }
+    private InputModel input;
+
+    protected override void OnInitialized()
+    {
+        if (CurrentUser.User.Id == Routine.UserId || CurrentUser.User.IsOperator)
+        {
+            input = new InputModel
+            {
+                Type = Routine.RoutineType,
+                Content = Routine.RoutineContent,
+            };
+        }
+    }
+
+    private async Task UpdateAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        if (CurrentUser.User.Id == Routine.UserId || CurrentUser.User.IsOperator)
+        {
+            Routine.RoutineType = input.Type;
+            Routine.RoutineContent = input.Content;
+            await Js.HideModalsAsync();
+            await RoutineService.UpdateAsync(Routine);
+            await Reloader.InvokeAsync();
+        }
+        waiter.EndInvoke();
+    }
+
+    private async Task RemoveAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        if (CurrentUser.User.Id == Routine.UserId || CurrentUser.User.IsOperator)
+            if (await Js.Confirm(localizer["operation.confirm"]))
+            {
+                await RoutineService.RemoveAsync(Routine.Id);
+                await Reloader.InvokeAsync();
+            }
+        waiter.EndInvoke();
+    }
+}
+
+<div class="col-12 col-md-6 col-lg-4 my-2">
+    <div class="card card-body">
+        <h6 class="card-subtitle">
+            <span class="text-info">@Routine.RoutineType</span>
+            @if (CurrentUser.User.Id == Routine.UserId || CurrentUser.User.IsOperator)
+            {
+                <button class="btn btn-sm btn-outline-danger float-right" @onclick="RemoveAsync">@localizer["operation.delete"]</button>
+                <span class="h6 font-weight-normal">
+                    <ModalComponent ModalButtonClass="btn-sm btn-outline-primary float-right mr-2" ModalButtonText="@localizer["operation.edit"]">
+                        <ModalTitle>@localizer["routine.edit"]</ModalTitle>
+                        <ModalBody>
+                            <EditForm Model="input" OnValidSubmit="UpdateAsync">
+                                <DataAnnotationsValidator></DataAnnotationsValidator>
+                                <p class="form-group">
+                                    <label>@localizer["routine.edit.type"]</label>
+                                    <InputText @bind-Value="input.Type" class="form-control"></InputText>
+                                    <ValidationMessage For="() => input.Type"></ValidationMessage>
+                                </p>
+                                <p class="form-group">
+                                    <label>@localizer["routine.edit.content"]</label>
+                                    <InputTextArea @bind-Value="input.Content" class="form-control" rows="4"></InputTextArea>
+                                    <ValidationMessage For="() => input.Content"></ValidationMessage>
+                                </p>
+                                <button class="btn btn-outline-primary" type="submit">@localizer["operation.apply"]</button>
+                            </EditForm>
+                        </ModalBody>
+                    </ModalComponent>
+                </span>
+            }
+        </h6>
+        @{ 
+            var user = UserInfo.GetUserById(Routine.UserId);
+        }
+        <small>
+            <span class="text-primary"><a href="/user/@user.Qid">@user.NickName</a></span>
+            @Routine.DateTime.ToString("yyyy-MM-dd HH:mm")
+        </small>
+        <div class="card-text">
+            @((MarkupString)Markdown.ToHtml(Routine.RoutineContent))
+        </div>
+    </div>
+</div>

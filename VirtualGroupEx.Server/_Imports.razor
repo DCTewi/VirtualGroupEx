@@ -1,0 +1,23 @@
+@using System.Net.Http
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.AspNetCore.Http
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.Extensions.Configuration 
+@using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Logging
+@using Microsoft.JSInterop
+@using VirtualGroupEx.Server
+@using VirtualGroupEx.Server.Components
+@using VirtualGroupEx.Server.Data
+@using VirtualGroupEx.Server.Localization 
+@using VirtualGroupEx.Server.Services
+@using VirtualGroupEx.Server.Shared
+
+@attribute [Authorize]
+@inject IStringLocalizer localizer

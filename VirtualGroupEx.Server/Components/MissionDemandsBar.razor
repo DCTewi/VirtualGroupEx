@@ -1,0 +1,40 @@
+@inject MissionService MissionService
+@inject CurrentUserService CurrentUser 
+
+@code
+{
+    [Parameter] public Mission Mission { get; set; }
+    [Parameter] public bool SmallFont { get; set; } = true;
+
+    private IList<MissionSection> missionSections;
+
+    private ISet<SkillPoint> demands = new HashSet<SkillPoint>();
+
+    protected override void OnInitialized()
+    {
+        missionSections = Mission.Sections.Select(s => MissionService.GetSectionIncludingColumns(s.Id)).ToList();
+
+        foreach (var section in missionSections)
+        {
+            section.GetDemandSet().ToList().ForEach(sp => demands.Add(sp));
+        }
+
+    }
+}
+
+@foreach (var sp in (SkillPoint[])Enum.GetValues(typeof(SkillPoint)))
+{
+    @if (demands.Contains(sp))
+    {
+        <span class="@(SmallFont ? "small" : "") @(CurrentUser.User.SkillPoints.Contains(sp) ? "text-primary" : "text-secondary")">
+            @localizer[$"sp.{sp}"]&nbsp;
+        </span>
+    }
+}
+
+@if (demands.Count == 0)
+{
+    <span class="@(SmallFont ? "small" : "")">
+        -
+    </span>
+}

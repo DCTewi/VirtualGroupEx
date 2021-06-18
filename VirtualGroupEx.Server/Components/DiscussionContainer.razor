@@ -1,0 +1,183 @@
+@inject CurrentUserService CurrentUser
+@inject UserInfoService UserInfo
+@inject DiscussionService DiscussionService
+@inject NavigationManager NavigationManager
+@inject MissionService MissionService
+@inject JSInvokeService Js
+
+@code
+{
+    [Parameter] public Discussion Discussion { get; set; }
+    [Parameter] public EventCallback<int> Remover { get; set; }
+    [Parameter] public bool IsRelatedMissionDiscussion { get; set; } = false;
+
+    private DiscussionPost editingPost;
+    private ActionWaiter waiter = new ActionWaiter();
+    private string newTitle;
+
+    protected override void OnInitialized()
+    {
+        newTitle = Discussion.Title;
+        editingPost = new DiscussionPost
+        {
+            UserId = CurrentUser.User.Id,
+            DiscussionId = Discussion.Id,
+        };
+    }
+
+    private void ReloadPage()
+    {
+        waiter.EndInvoke();
+        if (IsRelatedMissionDiscussion && Discussion.RelatedMissionId != 0)
+        {
+            NavigationManager.NavigateTo($"/mission/{Discussion.RelatedMissionId}", forceLoad: true);
+        }
+        else
+        {
+            NavigationManager.NavigateTo($"/post/{Discussion.Id}", forceLoad: true);
+        }
+    }
+
+    private async Task RemovePostAsync(int postId)
+    {
+        await DiscussionService.RemovePostAsync(postId);
+        ReloadPage();
+    }
+
+    private async Task OnSubmitAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        await DiscussionService.AddPostAsync(editingPost);
+        ReloadPage();
+    }
+
+    private async Task TopDiscussionAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        await DiscussionService.TopAsync(Discussion.Id);
+        ReloadPage();
+    }
+
+    private async Task UpdateDiscussionTitle()
+    {
+        if (waiter.CantInvoke) return;
+
+        newTitle = newTitle.Trim();
+        if (newTitle.Length <= 30)
+        {
+            await DiscussionService.UpdateTitleById(Discussion.Id, newTitle);
+        }
+        ReloadPage();
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        if (await Js.Confirm(localizer["operation.confirm"]))
+        {
+            await Remover.InvokeAsync(Discussion.Id);
+        }
+    }
+}
+
+@if (!IsRelatedMissionDiscussion)
+{
+    var user = UserInfo.GetUserById(Discussion.CreatorUserId);
+
+    <h4>
+        @if (Discussion.IsTopped)
+        {
+            <span class="badge badge-info mr-2">@localizer["discussion.topped"]</span>
+        }
+        <span class="badge badge-secondary">
+            @localizer[$"discussion.type.{Discussion.Type}"]
+        </span>
+        @Discussion.Title
+        <small>
+            @if (Discussion.Type == DiscussionType.MissionRelated && Discussion.RelatedMissionId != 0)
+            {
+                <small class="text-secondary">
+                    @localizer["discussion.relatedto"]: [<a href="/mission/@Discussion.RelatedMissionId">@MissionService.GetById(Discussion.RelatedMissionId).Title</a>]
+                </small>
+            }
+        </small>
+
+
+        @if (CurrentUser.User.Id == Discussion.CreatorUserId || CurrentUser.User.IsOperator)
+        {
+            @if (Discussion.Type != DiscussionType.MissionRelated)
+            {
+                <button class="btn btn-outline-danger btn-sm float-right"
+                        @onclick="@(async () => await ConfirmDeleteAsync())"
+                        id="disRemBtn" onmouseup="setButtonBuzy('disRemBtn')">
+                    @localizer["operation.delete"]
+                </button>
+            }
+            <ModalComponent ModalButtonClass="btn-sm float-right mr-2" ModalButtonText="@localizer["operation.edit"]">
+                <ModalTitle>@localizer["discussion.edit"]</ModalTitle>
+                <ModalBody>
+                    <p class="form-group h6 font-weight-normal">
+                        <label>@localizer["discussion.edit.title"]</label>
+                        <input type="text" class="form-control" @bind="newTitle" />
+                    </p>
+                    <button class="btn btn-primary" @onclick="UpdateDiscussionTitle"
+                            id="updTtlBtn" onmouseup="setButtonBuzy('updTtlBtn')">
+                        @localizer["operation.submit"]
+                    </button>
+                </ModalBody>
+            </ModalComponent>
+        }
+
+        @if (CurrentUser.User.IsOperator)
+        {
+            <button class="btn btn-outline-info btn-sm float-right mr-2"
+                    @onclick="@(async () => await TopDiscussionAsync())"
+                    id="disTopBtn" onmouseup="setButtonBuzy('disTopBtn')">
+                @localizer["operation.top"]
+            </button>
+        }
+    </h4>
+
+    <small class="text-primary"><a href="/user/@user.Qid">@user.NickName</a></small>
+    <small class="text-monospace">@Discussion.CreationTime.ToString("yyyy-MM-dd HH:mm")</small>
+
+    <hr />
+}
+
+<div class="row">
+    @if (Discussion.DiscussionPosts.Count == 0)
+    {
+        <table class="table table-borderless text-center">
+            <tbody>
+                <tr>
+                    <td>
+                        -
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    }
+    @foreach (var post in Discussion.DiscussionPosts)
+    {
+        <DiscussionPostContainer Post="post" PostRemover="RemovePostAsync"></DiscussionPostContainer>
+    }
+
+</div>
+
+<hr>
+<EditForm Model="editingPost" OnValidSubmit="OnSubmitAsync">
+    <DataAnnotationsValidator></DataAnnotationsValidator>
+    <p class="form-group">
+        <label>@localizer["discussion.reply"]</label>
+        <InputTextArea @bind-Value="editingPost.Content" class="form-control text-monospace" rows="4"></InputTextArea>
+        <ValidationMessage For="@(() => editingPost.Content)"></ValidationMessage>
+    </p>
+
+    <button class="btn btn-outline-primary mr-2" type="submit"
+            id="replyBtn" onclick="setButtonBuzy('replyBtn')">
+        @localizer["operation.submit"]
+    </button>
+</EditForm>

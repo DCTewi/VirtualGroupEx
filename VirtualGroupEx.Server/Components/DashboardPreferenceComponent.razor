@@ -1,0 +1,100 @@
+@inject PreferenceService Preference
+@inject CurrentUserService CurrentUser 
+@inject JSInvokeService Js 
+@inject UploadService Uploader 
+
+@code 
+{
+    private PreferenceOptions preference;
+    private ActionWaiter waiter = new ActionWaiter();
+
+    protected override void OnInitialized()
+    {
+        preference = ~Preference;
+    }
+
+    private async Task Apply()
+    {
+        if (waiter.CantInvoke) return;
+
+        preference.BackgroundUrl = preference.BackgroundUrl.Trim();
+        if (!Uri.TryCreate(preference.BackgroundUrl, UriKind.Absolute, out Uri result) ||
+            result.Scheme != Uri.UriSchemeHttps)
+        {
+            preference.BackgroundUrl = string.Empty;
+        }
+
+        Preference.Options = preference;
+        StateHasChanged();
+        await Js.ResetButtonAsync();
+
+        waiter.EndInvoke();
+    }
+
+    private async Task Reset()
+    {
+        preference = new PreferenceOptions();
+        await Apply();
+    }
+}
+
+<EditForm Model="preference" class="my-2">
+    <DataAnnotationsValidator></DataAnnotationsValidator>
+
+    @if (CurrentUser.User.IsAdministrator)
+    {
+        <p class="form-group">
+            <label>@localizer["dashboard.site.apptitle"]</label>
+            <InputText class="form-control" @bind-Value="preference.AppTitle"></InputText>
+        </p>
+
+        <p class="form-group">
+            <label>@localizer["dashboard.site.pageCapacity"]</label>
+            <InputNumber class="form-control" @bind-Value="preference.PageCapacity"></InputNumber>
+        </p>
+
+        <p class="form-group">
+            <label>@localizer["dashboard.site.filePerMission"]</label>
+            <InputNumber class="form-control" @bind-Value="preference.FilePerMission"></InputNumber>
+        </p>
+    }
+
+    <p class="form-group">
+        <label>@localizer["mission.description.originPrefix"]</label>
+        <InputText class="form-control" @bind-Value="preference.DescriptionOriginPrefix"></InputText>
+    </p>
+
+    <p class="form-group">
+        <label>@localizer["mission.description.originPostfix"]</label>
+        <InputText class="form-control" @bind-Value="preference.DescriptionOriginPostfix"></InputText>
+    </p>
+
+    <p class="form-group">
+        <label>@localizer["mission.description.postfix"]</label>
+        <InputTextArea class="form-control" @bind-Value="preference.DescriptionPostfix"></InputTextArea>
+    </p>
+
+    <p class="form-group">
+        <label>@localizer["dashboard.site.backgroundUrl"]</label>
+        <InputTextArea class="form-control" @bind-Value="preference.BackgroundUrl"></InputTextArea>
+    </p>
+
+    <button class="btn btn-outline-primary mr-2" @onclick="async () => await Apply()"
+            id="prefApBtn" onmouseup="setButtonBuzy('prefApBtn')">
+        @localizer["operation.apply"]
+    </button>
+
+    <button class="btn btn-outline-info mr-2" @onclick="async () => await Uploader.RefreshFileCacheAsync()"
+            id="filecacheResetBtn" onmouseup="setButtonBuzy('filecacheResetBtn')">
+        @localizer["operation.resetFileCache"]
+    </button>
+
+    @if (CurrentUser.User.IsAdministrator)
+    {
+        <button class="btn btn-outline-danger" @onclick="async () => await Reset()"
+                id="prefRsBtn" onmouseup="setButtonBuzy('prefRsBtn')">
+            @localizer["operation.reset"]
+        </button>
+    }
+</EditForm>
+

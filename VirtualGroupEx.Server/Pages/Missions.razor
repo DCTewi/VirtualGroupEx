@@ -1,0 +1,57 @@
+@page "/mission/{id:int?}"
+
+@inject MissionService MissionService 
+@inject NavigationManager NavigationManager
+
+@code
+{
+    [Parameter] public int? Id { get; set; }
+    private Mission singlePageMission;
+    private ActionWaiter waiter = new ActionWaiter();
+
+    protected override void OnInitialized()
+    {
+        if (Id != null)
+        {
+            singlePageMission = MissionService.GetById(Id.Value);
+            StateHasChanged();
+        }
+    }
+
+    private async Task RemoveAsync(int misId)
+    {
+        if (waiter.CantInvoke) return;
+
+        await MissionService.RemoveAsync(misId);
+        waiter.EndInvoke();
+
+        NavigationManager.NavigateTo("/mission", forceLoad: true);
+    }
+
+    private async Task UpdateAsync(Mission mission)
+    {
+        if (waiter.CantInvoke) return;
+
+        await MissionService.UpdateMissionAsync(mission);
+
+        waiter.EndInvoke();
+
+        NavigationManager.NavigateTo($"/mission/{mission.Id}", forceLoad: true);
+    }
+}
+
+@if (Id != null)
+{
+    if (singlePageMission != null)
+    {
+        <MissionContainer Mission="singlePageMission" Remover="RemoveAsync" Updater="UpdateAsync"></MissionContainer>
+    }
+    else
+    {
+        <NotFoundComponent></NotFoundComponent>
+    }
+}
+else
+{
+    <MissionList></MissionList>
+}

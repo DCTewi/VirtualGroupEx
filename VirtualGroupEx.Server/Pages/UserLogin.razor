@@ -1,0 +1,170 @@
+@page "/login"
+@attribute [AllowAnonymous]
+
+@using VirtualGroupEx.Server.Middlewares
+@inject NavigationManager NavigationManager
+@inject SignInManager<User> SignInManager
+@inject UserManager<User> UserManager
+@inject CurrentUserService CurrentUser
+@inject JSInvokeService Js
+@inject ILogger<UserLogin> Logger
+
+@code
+{
+    public class InputModel
+    {
+        [Required, StringLength(50, MinimumLength = 1)]
+        public string UserName { get; set; }
+
+        [Required]
+        [DataType(DataType.Password)]
+        public string Password { get; set; }
+
+        [Required]
+        public bool RememberMe { get; set; } = true;
+    }
+
+    public enum LoginFailedType
+    {
+        UserNotFound,
+        WrongPassword,
+        Banned,
+        Other,
+    }
+
+    private InputModel input;
+    private bool loginFailed = false;
+    private LoginFailedType loginFailedType;
+    private ActionWaiter waiter = new ActionWaiter();
+
+    protected override void OnInitialized()
+    {
+        input = new InputModel();
+    }
+
+    public async Task OnSubmitAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        Logger.LogInformation(
+        $"IP[{CurrentUser.IPAddress}] Login attempt for user [{input.UserName}]");
+
+        var user = await UserManager.FindByNameAsync(input.UserName);
+        if (user == null)
+        {
+            Logger.LogInformation(
+                $"IP[{CurrentUser.IPAddress}] User [{input.UserName}] not found");
+
+            loginFailedType = LoginFailedType.UserNotFound;
+            loginFailed = true;
+            await Js.ResetButtonAsync();
+            waiter.EndInvoke();
+            return;
+        }
+
+        if (!user.Available)
+        {
+            Logger.LogInformation(
+                $"IP[{CurrentUser.IPAddress}] User [{input.UserName}] was banned");
+
+            loginFailedType = LoginFailedType.Banned;
+            loginFailed = true;
+            await Js.ResetButtonAsync();
+            waiter.EndInvoke();
+            return;
+        }
+
+        if (await SignInManager.CanSignInAsync(user))
+        {
+            var result = await SignInManager.CheckPasswordSignInAsync(
+                user, input.Password, lockoutOnFailure: false);
+
+            if (result.Succeeded)
+            {
+                Guid key = PostLoginMiddleware.CreateLoginRequest(new PostLoginInfo
+                {
+                    UserName = input.UserName,
+                    Password = input.Password,
+                    RememberMe = input.RememberMe
+                });
+
+                Logger.LogInformation(
+                    $"IP[{CurrentUser.IPAddress}] Validation passed, try to login for [{input.UserName}]");
+
+                waiter.EndInvoke();
+                NavigationManager.NavigateTo($"/postLogin?key={key}", forceLoad: true);
+            }
+            else
+            {
+                Logger.LogInformation(
+                    $"IP[{CurrentUser.IPAddress}] User [{input.UserName}] password error");
+
+                loginFailedType = LoginFailedType.WrongPassword;
+                loginFailed = true;
+                await Js.ResetButtonAsync();
+                waiter.EndInvoke();
+                return;
+            }
+        }
+        else
+        {
+            Logger.LogInformation(
+                $"IP[{CurrentUser.IPAddress}] User [{input.UserName}] invalid attempt");
+
+            loginFailedType = LoginFailedType.Other;
+            loginFailed = true;
+            await Js.ResetButtonAsync();
+            waiter.EndInvoke();
+            return;
+        }
+    }
+}
+
+<h2>
+    @localizer["nav.login"]
+</h2>
+<LagCalculator></LagCalculator>
+<hr />
+
+@if (loginFailed)
+{
+    <div class="alert alert-danger col-12 col-md-8" role="alert">
+        <strong>@localizer["msg.loginFailed"]</strong><code>@Enum.GetName(loginFailedType)</code>
+    </div>
+}
+
+<EditForm Model="input"
+          OnValidSubmit="OnSubmitAsync">
+    <DataAnnotationsValidator></DataAnnotationsValidator>
+
+    <p class="form-group col-12 col-md-8">
+        <label>@localizer["login.username"]</label>
+        <InputText @bind-Value="input.UserName" class="form-control"></InputText>
+        <ValidationMessage For="@(() => input.UserName)"></ValidationMessage>
+    </p>
+
+    <p class="form-group col-12 col-md-8">
+        <label>@localizer["login.password"]</label>
+        <InputText @bind-Value="input.Password" class="form-control" type="password"></InputText>
+        <ValidationMessage For="@(() => input.Password)"></ValidationMessage>
+    </p>
+    <p class="form-group form-inline">
+        <InputCheckbox @bind-Value="input.RememberMe" class="form-check-inline"></InputCheckbox>
+        <label>@localizer["login.rememberMe"]</label>
+    </p>
+
+    <button class="btn btn-outline-primary" type="submit"
+            id="loginBtn" onclick="setButtonBuzy('loginBtn')">
+        @localizer["operation.login"]
+    </button>
+    <a class="btn btn-outline-info" href="/register">
+        @localizer["operation.register"]
+    </a>
+
+</EditForm>
+
+<hr />
+
+<div class="col-12 col-md-8">
+    <LocalizationSelector></LocalizationSelector>
+</div>

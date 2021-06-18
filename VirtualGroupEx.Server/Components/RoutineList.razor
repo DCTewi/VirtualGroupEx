@@ -1,0 +1,108 @@
+@inject CurrentUserService CurrentUser
+@inject UserInfoService UserInfo
+@inject RoutineService RoutineService
+@inject PreferenceService Preference
+@inject JSInvokeService Js
+@inject NavigationManager Navigation  
+
+@code
+{
+    private List<Routine> routines;
+    private Routine newRoutine;
+    private ActionWaiter waiter = new ActionWaiter();
+    private int loadedPageCount;
+
+    protected override void OnInitialized()
+    {
+        loadedPageCount = 1;
+        routines = RoutineService.GetAll();
+        routines.Sort((a, b) =>
+        {
+            return -a.DateTime.CompareTo(b.DateTime);
+        });
+
+        newRoutine = new Routine
+        {
+            UserId = CurrentUser.User.Id,
+        };
+    }
+
+    private void ReloadPage()
+    {
+        Navigation.NavigateTo("/routine", forceLoad: true);
+    }
+
+    private async Task AddAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        await RoutineService.AddAsync(newRoutine);
+        //await Js.HideModalsAsync();
+        //await Js.ResetButtonAsync();
+        ReloadPage();
+        waiter.EndInvoke();
+    }
+
+    private async Task LoadMore()
+    {
+        if (waiter.CantInvoke) return;
+
+        loadedPageCount += 1;
+        StateHasChanged();
+        await Js.ResetButtonAsync();
+        waiter.EndInvoke();
+    }
+}
+
+<h2>
+    @localizer["nav.routine"]
+    <span class="h6 font-weight-normal">
+        <ModalComponent ModalButtonClass="btn-sm btn-outline-primary float-right" ModalButtonText="@localizer["routine.add"]">
+            <ModalTitle>
+                @localizer["routine.add"]
+            </ModalTitle>
+            <ModalBody>
+                @if (newRoutine != null)
+                {
+                    <EditForm Model="newRoutine" OnValidSubmit="AddAsync">
+                        <DataAnnotationsValidator></DataAnnotationsValidator>
+                        <p class="form-group">
+                            <label>@localizer["routine.edit.type"]</label>
+                            <InputText @bind-Value="newRoutine.RoutineType" class="form-control"></InputText>
+                            <ValidationMessage For="() => newRoutine.RoutineType"></ValidationMessage>
+                        </p>
+                        <p class="form-group">
+                            <label>@localizer["routine.edit.content"]</label>
+                            <InputTextArea @bind-Value="newRoutine.RoutineContent" class="form-control" rows="4"></InputTextArea>
+                            <ValidationMessage For="() => newRoutine.RoutineContent"></ValidationMessage>
+                        </p>
+                        <button class="btn btn-outline-primary" type="submit">@localizer["operation.add"]</button>
+                    </EditForm>
+                }
+            </ModalBody>
+        </ModalComponent>
+    </span>
+</h2>
+
+<hr />
+
+@if (routines != null)
+{
+    <div class="row">
+        @foreach (var routine in routines.GetRange(0, Math.Min(loadedPageCount * (~Preference).PageCapacity, routines.Count)))
+        {
+            <RoutineContainer Routine="routine" Reloader="ReloadPage"></RoutineContainer>
+        }
+    </div>
+}
+
+
+@if (loadedPageCount * (~Preference).PageCapacity < routines.Count)
+{
+    <div class="d-flex justify-content-center">
+        <button class="btn btn-outline-primary" @onclick="LoadMore"
+                id="loadmoreBtn" onmouseup="setButtonBuzy('loadmoreBtn')">
+            @localizer["operation.loadmore"]
+        </button>
+    </div>
+}
