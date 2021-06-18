@@ -4,6 +4,13 @@
 * text=auto
 
 ###############################################################################
+# Kaonenniang, razor is not HTML
+###############################################################################
+
+*.razor linguist-language=C#
+*.cshtml linguist-language=C#
+
+###############################################################################
 # Set default behavior for command prompt diff.
 #
 # This is need for earlier builds of msysgit that does not have it on by
