@@ -4,11 +4,13 @@
 
 Yet Another v Group Forum | 又一个v字幕组综合平台。
 
-使用Server-Side Blazor on ASP.NET Core with .NET 5.0.7，数据库使用SQLite 3。
+使用 Server-Side Blazor on ASP.NET Core with .NET 5.0.7，数据库使用SQLite 3。
 
 ## 一点有的没的
 
 之前做的那个TewiClipool其实是数据库课的课程设计作业，虽然能用但是技术栈选的不太合适，而且写得太烂了。所以重做了这个，现在效果还可以吧。
+
+开发过程其实是在另一个Repo，但是那个Commit太杂乱了，所以新开了一个。
 
 ## 部署
 
