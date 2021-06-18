@@ -21,7 +21,7 @@
                 return a.SkillPoint.CompareTo(b.SkillPoint);
             }
         });
-        return section.MissionColumns;
+        return section?.MissionColumns;
     }
 }
 
@@ -36,14 +36,17 @@
         @foreach (var section in Mission.Sections)
         {
             var cols = GetSectionColumns(section.Id);
-            <p>
+            if ((cols?.Count ?? 0) > 0)
+            {
+                <p>
                 @foreach (var col in cols)
                 {
                     @localizer[$"sp.{col.SkillPoint}"]
                     <span>:</span>@UserInfo.GetUserById(col.UserId).NickName
                     <br />
                 }
-            </p>
+                </p>
+            }
         }
         @if (!string.IsNullOrEmpty((~Preference).DescriptionPostfix))
         {

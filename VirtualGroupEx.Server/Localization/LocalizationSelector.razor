@@ -9,7 +9,7 @@
     {
         if (HttpContextAccessor.HttpContext.Request.Cookies.ContainsKey(JsonLocalizerConstance.CookieName))
         {
-            currentLanguage = HttpContextAccessor.HttpContext.Request.Cookies[JsonLocalizerConstance.CookieName];
+            currentLanguage = HttpContextAccessor.HttpContext?.Request?.Cookies[JsonLocalizerConstance.CookieName];
             StateHasChanged();
         }
     }

@@ -21,4 +21,7 @@ function resetButtons() {
 
 function hideModals() {
     $('.modal.fade.show').modal('hide');
+    $('.modal-backdrop.fade.show').hide();
 }
+
+$('.modal-backdrop.fade.show').click(hideModals);
