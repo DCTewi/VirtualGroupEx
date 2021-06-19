@@ -7,7 +7,7 @@ namespace VirtualGroupEx.Server.Localization
     public static class JsonLocalizerConstance
     {
         public const string LocalizationPath = "Localization";
-        public const string LocalizationJson = "i18n.json";
+        public const string LocalizationJson = "I18n.json";
 
         public const string ControllerRoute = "locale";
         public const string CookieName = "lang";

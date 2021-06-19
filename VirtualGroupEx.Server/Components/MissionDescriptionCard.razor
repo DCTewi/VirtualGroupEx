@@ -8,9 +8,8 @@
 
     protected List<MissionColumn> GetSectionColumns(int sectionId)
     {
-
         var section = MissionService.GetSectionIncludingColumns(sectionId);
-        section.MissionColumns.Sort((a, b) =>
+        section?.MissionColumns?.Sort((a, b) =>
         {
             if (a.SkillPoint == b.SkillPoint)
             {
@@ -25,34 +24,37 @@
     }
 }
 
-<div class="card card-body shadow-sm my-2">
-    <div class="text-monospace text-secondary">
-        <p>
-            @((~Preference).DescriptionOriginPrefix)
-            @Mission.OriginInfo
-            @((~Preference).DescriptionOriginPostfix) <br />
-        </p>
+@if (Mission?.Sections != null)
+{
+    <div class="card card-body shadow-sm my-2">
+        <div class="text-monospace text-secondary">
+            <p>
+                @((~Preference).DescriptionOriginPrefix)
+                @Mission.OriginInfo
+                @((~Preference).DescriptionOriginPostfix) <br />
+            </p>
 
-        @foreach (var section in Mission.Sections)
-        {
-            var cols = GetSectionColumns(section.Id);
-            if ((cols?.Count ?? 0) > 0)
+            @foreach (var section in Mission.Sections)
+            {
+                var cols = GetSectionColumns(section.Id);
+                if ((cols?.Count ?? 0) > 0)
+                {
+                    <p>
+                        @foreach (var col in cols)
+                        {
+                            @localizer[$"sp.{col.SkillPoint}"]
+                            <span>:</span>@UserInfo.GetUserById(col.UserId).NickName
+                            <br />
+                        }
+                    </p>
+                }
+            }
+            @if (!string.IsNullOrEmpty((~Preference).DescriptionPostfix))
             {
                 <p>
-                @foreach (var col in cols)
-                {
-                    @localizer[$"sp.{col.SkillPoint}"]
-                    <span>:</span>@UserInfo.GetUserById(col.UserId).NickName
-                    <br />
-                }
+                    @((MarkupString)Markdig.Markdown.ToHtml((~Preference).DescriptionPostfix))
                 </p>
             }
-        }
-        @if (!string.IsNullOrEmpty((~Preference).DescriptionPostfix))
-        {
-            <p>
-                @((MarkupString)Markdig.Markdown.ToHtml((~Preference).DescriptionPostfix))
-            </p>
-        }
+        </div>
     </div>
-</div>
+}
