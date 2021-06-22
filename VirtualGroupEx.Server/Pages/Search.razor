@@ -106,7 +106,7 @@
                         {
                             var mission = missionresult.Result as Mission;
 
-                            <tr class="table-@mission.ColorString">
+                            <tr role="button" class="table-@mission.ColorString" @onclick="@(() => NavigationManager.NavigateTo($"/mission/{mission.Id}", forceLoad: true))">
                                 <td>
                                     <a role="button" class="btn-link text-body" @onclick="@(() => NavigationManager.NavigateTo($"/mission/{mission.Id}", forceLoad: true))">
                                         @mission.Title
