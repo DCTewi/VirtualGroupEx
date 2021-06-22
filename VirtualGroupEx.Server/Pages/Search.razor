@@ -39,10 +39,10 @@
 
     <p class="form-group">
         <label>@localizer["search.string"]</label>
-        <input class="form-control" @bind="keyword" />
+        <input type="text" class="form-control" @bind="keyword" />
     </p>
 
-    <button type="button" class="btn btn-outline-primary" @onclick="SearchAsync"
+    <button type="submit" class="btn btn-outline-primary" @onclick="SearchAsync"
             id="searchBtn" onmouseup="setButtonBuzy('searchBtn')">
         @localizer["operation.search"]
     </button>
