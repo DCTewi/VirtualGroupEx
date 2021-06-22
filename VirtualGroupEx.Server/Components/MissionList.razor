@@ -140,7 +140,7 @@ else
         <tbody>
             @foreach (var mission in missions.GetRange(0, Math.Min(loadedPageCount * (~Preference).PageCapacity, missions.Count)))
             {
-                <tr class="table-@mission.ColorString">
+                <tr role="button" class="table-@mission.ColorString" @onclick="@(() => LoadMission(mission.Id))">
                     <td>
                         <a role="button" class="btn-link text-body" @onclick="@(() => LoadMission(mission.Id))">
                             @mission.Title
@@ -153,8 +153,8 @@ else
                     <td>@localizer[$"mission.type.{mission.Type}"]</td>
                     <td>@mission.OriginInfo</td>
                 </tr>
-            }
-        </tbody>
+                }
+            </tbody>
     </table>
 </div>
 }
