@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Web;
 using VirtualGroupEx.Server.Data;
 
 namespace VirtualGroupEx.Server.Services
@@ -91,7 +92,7 @@ namespace VirtualGroupEx.Server.Services
         public async Task RemoveFileInfoAsync(string infoId)
         {
             var info = db.UploadFileInfos.FirstOrDefault(i => i.Id == infoId);
-            var path = Path.Combine(configuration.GetValue<string>("UploadRootPath"), info.MissionId.ToString(), info.Id);
+            var path = Path.Combine(configuration.GetValue<string>("UploadRootPath"), info?.MissionId.ToString(), info?.Id);
 
             if (File.Exists(path))
             {
@@ -107,7 +108,7 @@ namespace VirtualGroupEx.Server.Services
         {
             var info = db.UploadFileInfos.FirstOrDefault(i => i.Id == infoId);
 
-            return $"?mid={info?.MissionId}&hash={info?.Id}&name={info?.OriginName}";
+            return $"?mid={info?.MissionId}&hash={info?.Id}&name={HttpUtility.UrlEncode(info?.OriginName)}";
         }
     }
 }

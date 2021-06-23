@@ -28,7 +28,6 @@
     private bool rendered = false;
 
     private const long maxFileSize = 1024 * 1024 * 10; // 10Mbit
-    private const int bufferSize = 8 * 1024 * 5; // 5KB
 
     private IBrowserFile loadedFile;
     private CancellationTokenSource cancelation = new CancellationTokenSource();
@@ -36,9 +35,8 @@
     private ActionWaiter waiter = new();
 
     private bool canUpload = false;
+    private bool isUploading = false;
 
-    private bool displayProgress = false;
-    private int progressPercent;
     private string lastId;
 
     private string errorMsg = string.Empty;
@@ -77,26 +75,15 @@
                 var result = await Uploader.GenerateFileInfoAsync(Mission.Id, loadedFile.Name);
                 await using var fs = result.Item1;
                 lastId = result.Item2;
-                //await loadedFile.OpenReadStream(maxFileSize).CopyToAsync(fs, cancelation.Token);
 
-                await using var stream = loadedFile.OpenReadStream(maxFileSize);
+                isUploading = true;
+                StateHasChanged();
 
-                var buffer = new byte[bufferSize];
-                int bytesRead;
-                double totalRead = 0;
+                await loadedFile.OpenReadStream(maxFileSize).CopyToAsync(fs, cancelation.Token);
 
-                displayProgress = true;
-
-                while ((bytesRead = await stream.ReadAsync(buffer, cancelation.Token)) != 0)
-                {
-                    totalRead += bytesRead;
-                    await fs.WriteAsync(buffer, cancelation.Token);
-
-                    progressPercent = (int)((totalRead / loadedFile.Size) * 100);
-                    StateHasChanged();
-                }
-
-                displayProgress = false;
+                isUploading = false;
+                lastId = string.Empty;
+                StateHasChanged();
             }
             catch
             {
@@ -125,7 +112,7 @@
         cancelation.Cancel();
 
         // delete failed files
-        if (displayProgress && !string.IsNullOrEmpty(lastId))
+        if (isUploading && !string.IsNullOrEmpty(lastId))
         {
             await Task.Run(new Action(async () =>
             {
@@ -145,7 +132,7 @@
                 }
             }));
 
-            displayProgress = false;
+            isUploading = false;
             lastId = string.Empty;
         }
     }
@@ -208,25 +195,28 @@
 
         @if ((fileInfos?.Count ?? 0) < (~Preference).FilePerMission)
         {
-            var progressCss = "progress " + (displayProgress ? "" : "d-none");
-            var progressWidthStyle = progressPercent + "%";
-
-            <form method="dialog" class="form-inline">
-                <p class="input-group mb-2">
-                    <label class="pb-2 mr-2">@localizer["mission.file"]</label>
+            <form method="dialog">
+                <p class="input-group mb-0">
                     <InputFile OnChange="LoadFile" AdditionalAttributes="@(new Dictionary<string, object> { { "class", "custom-file" } })"></InputFile>
                 </p>
-                @if (canUpload)
+                @if (isUploading)
                 {
-                    <button class="btn btn-outline-primary btn-sm mb-3" @onclick="UploadFile">
+                    <p class="mb-2 text-info">
+                        <span class="spinner-grow spinner-grow-sm" role="status"></span>
+                        @localizer["mission.file.uploading"]
+                    </p>
+                }
+                else
+                {
+                    <p class="mb-2">@localizer["mission.file"]</p>
+                }
+                @if (!isUploading && canUpload)
+                {
+                    <button class="btn btn-outline-primary btn-sm" @onclick="UploadFile">
                         @localizer["operation.upload"]
                     </button>
                 }
             </form>
-
-            <div class="@progressCss">
-                <div class="progress-bar" role="progressbar" style="width:@progressWidthStyle" area-valuenow="@progressPercent" aria-minvalue="0" aria-maxvalue="100"></div>
-            </div>
 
             @if (!string.IsNullOrEmpty(errorMsg))
             {
