@@ -199,13 +199,14 @@ namespace VirtualGroupEx.Server.Services
 
             foreach (var sp in (SkillPoint[])Enum.GetValues(typeof(SkillPoint)))
             {
-                var count = section.GetColumnCount(sp);
+                var originCount = section.GetColumnCount(sp);
+                var editingContains = editingSection.Demands.ContainsKey(sp);
 
-                if (count != -1)
+                if (originCount != -1)
                 {
-                    if (!editingSection.Demands.ContainsKey(sp)) return false;
+                    if (originCount != 0 && !editingContains) return false;
 
-                    if (editingSection.Demands[sp] < count) return false;
+                    if (editingContains && editingSection.Demands[sp] < originCount) return false;
                 }
             }
 
