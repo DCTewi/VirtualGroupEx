@@ -91,7 +91,7 @@ namespace VirtualGroupEx.Server.Services
         public async Task RemoveFileInfoAsync(string infoId)
         {
             var info = db.UploadFileInfos.FirstOrDefault(i => i.Id == infoId);
-            var path = Path.Combine(configuration.GetValue<string>("UploadRootPath"), info.MissionId.ToString(), info.Id);
+            var path = Path.Combine(configuration.GetValue<string>("UploadRootPath"), info?.MissionId.ToString(), info?.Id);
 
             if (File.Exists(path))
             {
