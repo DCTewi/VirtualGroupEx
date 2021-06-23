@@ -1,6 +1,6 @@
 @using System.Threading
 
-@implements IDisposable
+@implements IAsyncDisposable
 
 @inject UserInfoService UserInfo
 @inject CurrentUserService CurrentUser
@@ -28,7 +28,7 @@
     private bool rendered = false;
 
     private const long maxFileSize = 1024 * 1024 * 10; // 10Mbit
-    private const int bufferSize = 4 * 1024 * 5; // 5KB
+    private const int bufferSize = 8 * 1024 * 5; // 5KB
 
     private IBrowserFile loadedFile;
     private CancellationTokenSource cancelation = new CancellationTokenSource();
@@ -39,6 +39,7 @@
 
     private bool displayProgress = false;
     private int progressPercent;
+    private string lastId;
 
     private string errorMsg = string.Empty;
 
@@ -73,7 +74,9 @@
         {
             try
             {
-                await using var fs = await Uploader.GenerateFileInfoAsync(Mission.Id, loadedFile.Name);
+                var result = await Uploader.GenerateFileInfoAsync(Mission.Id, loadedFile.Name);
+                await using var fs = result.Item1;
+                lastId = result.Item2;
                 //await loadedFile.OpenReadStream(maxFileSize).CopyToAsync(fs, cancelation.Token);
 
                 await using var stream = loadedFile.OpenReadStream(maxFileSize);
@@ -117,9 +120,34 @@
         waiter.EndInvoke();
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         cancelation.Cancel();
+
+        // delete failed files
+        if (displayProgress && !string.IsNullOrEmpty(lastId))
+        {
+            await Task.Run(new Action(async () =>
+            {
+                var confirmDelete = false;
+
+                while (!confirmDelete)
+                {
+                    try
+                    {
+                        await Uploader.RemoveFileInfoAsync(lastId);
+                        confirmDelete = true;
+                    }
+                    catch
+                    {
+                        Thread.Sleep(500);
+                    }
+                }
+            }));
+
+            displayProgress = false;
+            lastId = string.Empty;
+        }
     }
 }
 
@@ -197,9 +225,7 @@
             </form>
 
             <div class="@progressCss">
-                <div class="progress-bar text-center" role="progressbar" style="width:@progressWidthStyle" area-valuenow="@progressPercent" aria-minvalue="0" aria-maxvalue="100">
-                    @localizer["msg.uploading"]
-                </div>
+                <div class="progress-bar" role="progressbar" style="width:@progressWidthStyle" area-valuenow="@progressPercent" aria-minvalue="0" aria-maxvalue="100"></div>
             </div>
 
             @if (!string.IsNullOrEmpty(errorMsg))
