@@ -49,6 +49,7 @@
     "mission.section": "项目分段",
     "mission.section.join": "参加",
     "mission.section.add": "添加分段",
+    "mission.section.edit": "修改分段",
     "mission.section.description": "分段简介",
     "mission.section.title": "分段标题",
     "mission.section.info": "分段信息",
@@ -179,6 +180,7 @@
     "operation.upload": "上传",
     "operation.resetFileCache": "重置文件缓存",
 
+    "msg.section.editerror": "不允许小于已参加数量, 请先退出分段",
     "msg.listEmpty": "所请求的资源为空",
     "msg.notfound": "未找到请求的资源",
     "msg.loginFailed": "登录失败！",
@@ -239,6 +241,7 @@
     "mission.section": "セクション",
     "mission.section.join": "参加",
     "mission.section.add": "セクションを追加",
+    "mission.section.edit": "編集",
     "mission.section.description": "セクションの紹介",
     "mission.section.title": "セクションのタイトル",
     "mission.section.info": "セクションの情報",
@@ -368,6 +371,7 @@
     "operation.upload": "アップロード",
     "operation.resetFileCache": "ファイルキャッシュをリセット",
 
+    "msg.section.editerror": "不允许小于已参加数量, 请先退出分段",
     "msg.listEmpty": "リクエストのリソースは存在しません！",
     "msg.notfound": "リクエストのリソースは見つかりません！",
     "msg.loginFailed": "ログインはできませんでした！",
@@ -428,6 +432,7 @@
     "mission.section": "Section",
     "mission.section.join": "Join",
     "mission.section.add": "Add",
+    "mission.section.edit": "Edit",
     "mission.section.description": "Description",
     "mission.section.title": "Title",
     "mission.section.info": "Info",
@@ -558,6 +563,7 @@
     "operation.upload": "Upload",
     "operation.resetFileCache": "Reset File Box Cache",
 
+    "msg.section.editerror": "New column count can't be lower than joined columns",
     "msg.listEmpty": "Resourse to access is empty",
     "msg.notfound": "Resourse not found",
     "msg.loginFailed": "Login failed",

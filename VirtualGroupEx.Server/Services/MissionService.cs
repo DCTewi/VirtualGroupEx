@@ -192,5 +192,30 @@ namespace VirtualGroupEx.Server.Services
                 .Where(col => col.UserId == userId && col.JoinTime.AddDays(30).CompareTo(DateTime.Now) > 0)
                 .Count();
         }
+
+        public async Task<bool> UpdateMissionSectionAsync(int sectionId, MissionSection editingSection)
+        {
+            var section = GetSectionIncludingColumns(sectionId);
+
+            foreach (var sp in (SkillPoint[])Enum.GetValues(typeof(SkillPoint)))
+            {
+                var count = section.GetColumnCount(sp);
+
+                if (count != -1)
+                {
+                    if (!editingSection.Demands.ContainsKey(sp)) return false;
+
+                    if (editingSection.Demands[sp] < count) return false;
+                }
+            }
+
+            section.Demands = editingSection.Demands;
+
+            db.MissionSections.Update(section);
+
+            await db.SaveChangesAsync();
+
+            return true;
+        }
     }
 }
