@@ -1,7 +1,7 @@
 {
   "zh-CN": {
     "nav.bulletin": "公告栏",
-    "nav.search": "搜索框",
+    "nav.search": "搜索",
     "nav.routine": "打卡处",
     "nav.mission": "工作表",
     "nav.discussion": "讨论版",
@@ -194,7 +194,7 @@
   },
   "ja-JP": {
     "nav.bulletin": "掲示板",
-    "nav.search": "検索ボックス",
+    "nav.search": "検索",
     "nav.routine": "ルーティン",
     "nav.mission": "仕事テーブル",
     "nav.discussion": "検討エリア",
