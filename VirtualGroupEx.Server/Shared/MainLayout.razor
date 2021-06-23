@@ -14,26 +14,28 @@
 
     <div class="main">
         <div class="top-row auth px-4">
-            <form class="form-inline" method="dialog">
-                <p class="input-group mb-0">
-                    <input class="form-control" placeholder="@localizer["search.string"]" @bind="keyword" />
-                    <div class="input-group-append">
-                        <button type="button" class="btn btn-outline-primary" @onclick="@(() => NavigationManager.NavigateTo($"/search/{keyword}", forceLoad: true))"
-                                id="searchBtn" onmouseup="setButtonBuzy('searchBtn')">
-                            @localizer["operation.search"]
-                        </button>
-                    </div>
-                </p>
-            </form>
-
-            <a href="/me">
-                <span class="oi oi-person mr-1"></span>
-                @CurrentUser.User.NickName.Substring(0, Math.Min(CurrentUser.User.NickName.Length, 9))
-                @if (CurrentUser.User.NickName.Length > 9)
-                {
-                    <span>...</span>
-                }
-            </a>
+            @if (CurrentUser.User != null)
+            {
+                <form class="form-inline" method="dialog">
+                    <p class="input-group mb-0">
+                        <input class="form-control" placeholder="@localizer["search.string"]" @bind="keyword" />
+                        <div class="input-group-append">
+                            <button type="button" class="btn btn-outline-primary" @onclick="@(() => NavigationManager.NavigateTo($"/search/{keyword}", forceLoad: true))"
+                                    id="searchBtn" onmouseup="setButtonBuzy('searchBtn')">
+                                @localizer["operation.search"]
+                            </button>
+                        </div>
+                    </p>
+                </form>
+                <a href="/me">
+                    <span class="oi oi-person mr-1"></span>
+                    @CurrentUser.User.NickName.Substring(0, Math.Min(CurrentUser.User.NickName.Length, 9))
+                    @if (CurrentUser.User.NickName.Length > 9)
+                    {
+                        <span>...</span>
+                    }
+                </a>
+             }
         </div>
         <div class="content px-4">
             @Body
