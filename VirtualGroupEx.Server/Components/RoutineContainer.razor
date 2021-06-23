@@ -98,7 +98,7 @@
             <span class="text-primary"><a href="/user/@user.Qid">@user.NickName</a></span>
             @Routine.DateTime.ToString("yyyy-MM-dd HH:mm")
         </small>
-        <div class="card-text">
+        <div class="card-text mt-2">
             @((MarkupString)Markdown.ToHtml(Routine.RoutineContent))
         </div>
     </div>
