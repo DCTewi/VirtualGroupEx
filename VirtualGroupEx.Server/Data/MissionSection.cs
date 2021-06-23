@@ -19,7 +19,7 @@ namespace VirtualGroupEx.Server.Data
         [JsonIgnore]
         public List<MissionColumn> MissionColumns { get; set; }
 
-        [MaxLength(6)]
+        [MaxLength(20)]
         public string Description { get; set; }
 
         public Dictionary<SkillPoint, int> Demands { get; set; } = new Dictionary<SkillPoint, int>();
