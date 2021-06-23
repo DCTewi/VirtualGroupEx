@@ -19,6 +19,7 @@
         {
             await SearchAsync();
         }
+        await base.OnAfterRenderAsync(firstRender);
     }
 
     private async Task SearchAsync()

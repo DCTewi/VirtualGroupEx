@@ -3,6 +3,19 @@
 @inject CurrentUserService CurrentUser
 @inject NavigationManager NavigationManager
 
+@inject JSInvokeService Js 
+@code 
+{ 
+    protected async override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Js.HideModalsAsync();
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+} 
+
 @code
 {
     protected override void OnInitialized()

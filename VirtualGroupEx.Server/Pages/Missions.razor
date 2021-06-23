@@ -3,6 +3,19 @@
 @inject MissionService MissionService 
 @inject NavigationManager NavigationManager
 
+@inject JSInvokeService Js 
+@code 
+{ 
+    protected async override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Js.HideModalsAsync();
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+} 
+
 @code
 {
     [Parameter] public int? Id { get; set; }

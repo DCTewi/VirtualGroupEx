@@ -2,6 +2,18 @@
 
 @inject DiscussionService DiscussService
 @inject NavigationManager NavigationManager 
+@inject JSInvokeService Js 
+@code 
+{ 
+    protected async override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Js.HideModalsAsync();
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+} 
 
 @code
 {
