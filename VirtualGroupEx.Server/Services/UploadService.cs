@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Web;
 using VirtualGroupEx.Server.Data;
 
 namespace VirtualGroupEx.Server.Services
@@ -107,7 +108,7 @@ namespace VirtualGroupEx.Server.Services
         {
             var info = db.UploadFileInfos.FirstOrDefault(i => i.Id == infoId);
 
-            return $"?mid={info?.MissionId}&hash={info?.Id}&name={info?.OriginName}";
+            return $"?mid={info?.MissionId}&hash={info?.Id}&name={HttpUtility.UrlEncode(info?.OriginName)}";
         }
     }
 }
