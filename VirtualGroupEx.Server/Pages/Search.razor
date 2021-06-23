@@ -1,23 +1,33 @@
 @page "/search"
+@page "/search/{keyword}"
 
 @inject SearchService SearchService
 @inject NavigationManager NavigationManager
 @inject DiscussionService DiscussService
 @inject UserInfoService UserInfo
-@inject JSInvokeService Js 
+@inject JSInvokeService Js
 
 @code
 {
-    private string keyword;
+    [Parameter] public string Keyword { get; set; }
 
     private List<SearchResult> searchResults = null;
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!string.IsNullOrEmpty(Keyword))
+        {
+            await SearchAsync();
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
     private async Task SearchAsync()
     {
-        if (!string.IsNullOrEmpty(keyword))
+        if (!string.IsNullOrEmpty(Keyword))
         {
-            keyword = keyword?.Trim();
-            searchResults = SearchService.Search(keyword);
+            Keyword = Keyword?.Trim();
+            searchResults = SearchService.Search(Keyword);
             StateHasChanged();
         }
         await Js.ResetButtonAsync();
@@ -25,29 +35,32 @@
 
     private async Task ReloadPage()
     {
-        keyword = string.Empty;
+        Keyword = string.Empty;
         searchResults = null;
         await Js.ResetButtonAsync();
     }
 }
 
-<h2>@localizer["nav.search"]</h2>
+<h2>@localizer["nav.search"]@(string.IsNullOrEmpty(Keyword) ? "" : $": {Keyword}")</h2>
 
-<hr />
 
-<form class="col-lg-8" method="dialog">
+@if (string.IsNullOrEmpty(Keyword))
+{
+    <hr />
+    <form class="col-lg-8" method="dialog">
 
-    <p class="form-group">
-        <label>@localizer["search.string"]</label>
-        <input class="form-control" @bind="keyword" />
-    </p>
+        <p class="form-group">
+            <label>@localizer["search.string"]</label>
+            <input class="form-control" @bind="Keyword" />
+        </p>
 
-    <button type="button" class="btn btn-outline-primary" @onclick="SearchAsync"
-            id="searchBtn" onmouseup="setButtonBuzy('searchBtn')">
-        @localizer["operation.search"]
-    </button>
+        <button type="button" class="btn btn-outline-primary" @onclick="@(() => NavigationManager.NavigateTo($"/search/{Keyword}"))"
+                id="searchBtn" onmouseup="setButtonBuzy('searchBtn')">
+            @localizer["operation.search"]
+        </button>
 
-</form>
+    </form>
+}
 
 @if (searchResults != null)
 {

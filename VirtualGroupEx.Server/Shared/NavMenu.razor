@@ -58,11 +58,6 @@
                         </NavLink>
                     </li>
                     <li class="nav-item px-3">
-                        <NavLink class="nav-link" href="/search">
-                            <span class="oi oi-magnifying-glass" aria-hidden="true"></span> @localizer["nav.search"]
-                        </NavLink>
-                    </li>
-                    <li class="nav-item px-3">
                         <NavLink class="nav-link" href="/routine">
                             <span class="oi oi-tags" aria-hidden="true"></span> @localizer["nav.routine"]
                         </NavLink>
@@ -90,25 +85,7 @@
                             </NavLink>
                         </li>
                     }
-                    @*@if (CurrentUser.User.IsAdministrator)
-                {
-                    <li class="nav-item px-3">
-                        <NavLink class="nav-link" href="/apikey">
-                            <span class="oi oi-terminal" aria-hidden="true"></span> @localizer["nav.api"]
-                        </NavLink>
-                    </li>
-                }*@
                 }
-                <li class="nav-item px-3">
-                    <NavLink class="nav-link" href="/me">
-                        <span class="oi oi-person" aria-hidden="true"></span>
-                        @CurrentUser.User.NickName.Substring(0, Math.Min(CurrentUser.User.NickName.Length, 9))
-                        @if (CurrentUser.User.NickName.Length > 9)
-                        {
-                            <span>...</span>
-                        }
-                    </NavLink>
-                </li>
             }
             else
             {
