@@ -1,6 +1,6 @@
 @inject MissionService MissionService
 @inject UserInfoService UserInfo
-@inject PreferenceService Preference 
+@inject PreferenceService Preference
 
 @code
 {
@@ -22,10 +22,37 @@
         });
         return section?.MissionColumns;
     }
+
+    protected Dictionary<SkillPoint, List<string>> GetCollectedStaff()
+    {
+        var result = new Dictionary<SkillPoint, List<string>>();
+
+        foreach (var section in Mission.Sections)
+        {
+            var cols = GetSectionColumns(section.Id);
+            if ((cols?.Count ?? 0) > 0)
+            {
+                foreach (var col in cols)
+                {
+                    if (!result.ContainsKey(col.SkillPoint))
+                    {
+                        result[col.SkillPoint] = new();
+                    }
+
+                    var nickname = UserInfo.GetUserById(col.UserId).NickName;
+                    result[col.SkillPoint].Add(nickname);
+                }
+            }
+        }
+
+        return result;
+    }
 }
 
 @if (Mission?.Sections != null)
 {
+    var staffs = GetCollectedStaff();
+
     <div class="card card-body shadow-sm my-2">
         <div class="text-monospace text-secondary">
             <p>
@@ -34,21 +61,16 @@
                 @((~Preference).DescriptionOriginPostfix) <br />
             </p>
 
-            @foreach (var section in Mission.Sections)
-            {
-                var cols = GetSectionColumns(section.Id);
-                if ((cols?.Count ?? 0) > 0)
+            <p>
+                @foreach (var spStaff in staffs)
                 {
-                    <p>
-                        @foreach (var col in cols)
-                        {
-                            @localizer[$"sp.{col.SkillPoint}"]
-                            <span>:</span>@UserInfo.GetUserById(col.UserId).NickName
-                            <br />
-                        }
-                    </p>
+                    <span>
+                        @($"{localizer[$"sp.{spStaff.Key}"]}: {string.Join(", ", spStaff.Value)}")
+                    </span>
+                    <br />
                 }
-            }
+            </p>
+
             @if (!string.IsNullOrEmpty((~Preference).DescriptionPostfix))
             {
                 <p>
