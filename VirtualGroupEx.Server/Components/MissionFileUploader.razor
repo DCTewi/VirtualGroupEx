@@ -1,6 +1,6 @@
 @using System.Threading
 
-@implements IDisposable
+@implements IAsyncDisposable
 
 @inject UserInfoService UserInfo
 @inject CurrentUserService CurrentUser
@@ -19,8 +19,16 @@
         fileInfos = Uploader.GetFileInfoByMissionId(Mission.Id);
     }
 
+    protected override void OnAfterRender(bool firstRender)
+    {
+        rendered = true;
+        StateHasChanged();
+    }
+
+    private bool rendered = false;
+
     private const long maxFileSize = 1024 * 1024 * 10; // 10Mbit
-    private const int bufferSize = 4 * 1024 * 5; // 5KB
+    private const int bufferSize = 8 * 1024 * 5; // 5KB
 
     private IBrowserFile loadedFile;
     private CancellationTokenSource cancelation = new CancellationTokenSource();
@@ -31,6 +39,7 @@
 
     private bool displayProgress = false;
     private int progressPercent;
+    private string lastId;
 
     private string errorMsg = string.Empty;
 
@@ -65,7 +74,9 @@
         {
             try
             {
-                await using var fs = await Uploader.GenerateFileInfoAsync(Mission.Id, loadedFile.Name);
+                var result = await Uploader.GenerateFileInfoAsync(Mission.Id, loadedFile.Name);
+                await using var fs = result.Item1;
+                lastId = result.Item2;
                 //await loadedFile.OpenReadStream(maxFileSize).CopyToAsync(fs, cancelation.Token);
 
                 await using var stream = loadedFile.OpenReadStream(maxFileSize);
@@ -109,85 +120,118 @@
         waiter.EndInvoke();
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         cancelation.Cancel();
+
+        // delete failed files
+        if (displayProgress && !string.IsNullOrEmpty(lastId))
+        {
+            await Task.Run(new Action(async () =>
+            {
+                var confirmDelete = false;
+
+                while (!confirmDelete)
+                {
+                    try
+                    {
+                        await Uploader.RemoveFileInfoAsync(lastId);
+                        confirmDelete = true;
+                    }
+                    catch
+                    {
+                        Thread.Sleep(500);
+                    }
+                }
+            }));
+
+            displayProgress = false;
+            lastId = string.Empty;
+        }
     }
 }
 
 <div class="card card-body shadow-sm my-2">
     <h5><span class="oi oi-file"></span>@localizer["mission.file.cardTitle"]</h5>
-    @if (fileInfos == null)
-    {
 
-    }
-    else if (fileInfos.Count <= 0)
+    @if (!rendered)
     {
-        <hr />
-        <div class="text-secondary mb-4">
-            @localizer["mission.file.empty"]
-        </div>
+        <div class="spinner-border"></div>
     }
     else
     {
-        <div class="table-responsive">
-            <table class="table table-hover">
-                @foreach (var info in fileInfos)
-                {
-                    var user = UserInfo.GetUserById(info.UploaderId);
-                    <tr>
-                        <td>
-                            <a target="_blank" href="/file@(Uploader.GetFileQueryString(info?.Id))">
-                                @info.OriginName
-                            </a>
-                        </td>
-                        <td>
-                            <a href="/user/@user.Qid">
-                                @user.NickName
-                            </a>
-                        </td>
-                        <td>
-                            @info.UploadTime.ToString("yyyy-MM-dd HH:mm")
-                        </td>
-                        <td>
-                            @if (CurrentUser.User.Id == info.UploaderId || CurrentUser.User.IsOperator)
-                            {
-                                <button class="btn btn-outline-danger btn-sm" @onclick="@(async () => await RemoveFileAsync(info.Id))">
-                                    @localizer["operation.delete"]
-                                </button>
-                            }
-                        </td>
-                    </tr>
-                }
-            </table>
-        </div>
-    }
-
-    @if ((fileInfos?.Count ?? 0) < (~Preference).FilePerMission)
-    {
-        var progressCss = "progress " + (displayProgress ? "" : "d-none");
-        var progressWidthStyle = progressPercent + "%";
-
-        <form method="dialog" class="form-inline">
-            <p class="input-group mb-2">
-                <label class="pb-2 mr-2">@localizer["mission.file"]</label>
-                <InputFile OnChange="LoadFile" AdditionalAttributes="@(new Dictionary<string, object> { { "class", "custom-file" } })"></InputFile>
-            </p>
-            @if (canUpload)
-            {
-                <button class="btn btn-outline-primary btn-sm mb-3" @onclick="UploadFile">
-                    @localizer["operation.upload"]
-                </button>
-            }
-        </form>
-
-        <div class="@progressCss">
-            <div class="progress-bar" role="progressbar" style="width:@progressWidthStyle" area-valuenow="@progressPercent" aria-minvalue="0" aria-maxvalue="100"></div>
-        </div>
-
-        @if (!string.IsNullOrEmpty(errorMsg))
+        @if (fileInfos == null)
         {
-            <div class="text-danger">@errorMsg</div>
+            
+        }
+        else if (fileInfos.Count <= 0)
+        {
+            <hr />
+            <div class="text-secondary mb-4">
+                @localizer["mission.file.empty"]
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    @foreach (var info in fileInfos)
+                    {
+                        var user = UserInfo.GetUserById(info.UploaderId);
+                        <tr>
+                            <td>
+                                <a target="_blank" href="/file@(Uploader.GetFileQueryString(info?.Id))">
+                                    @info.OriginName
+                                </a>
+                            </td>
+                            <td>
+                                <a href="/user/@user.Qid">
+                                    @user.NickName
+                                </a>
+                            </td>
+                            <td>
+                                @info.UploadTime.ToString("yyyy-MM-dd HH:mm")
+                            </td>
+                            <td>
+                                @if (CurrentUser.User.Id == info.UploaderId || CurrentUser.User.IsOperator)
+                                {
+                                    <button class="btn btn-outline-danger btn-sm" @onclick="@(async () => await RemoveFileAsync(info.Id))">
+                                        @localizer["operation.delete"]
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </table>
+            </div>
+        }
+
+        @if ((fileInfos?.Count ?? 0) < (~Preference).FilePerMission)
+        {
+            var progressCss = "progress " + (displayProgress ? "" : "d-none");
+            var progressWidthStyle = progressPercent + "%";
+
+            <form method="dialog" class="form-inline">
+                <p class="input-group mb-2">
+                    <label class="pb-2 mr-2">@localizer["mission.file"]</label>
+                    <InputFile OnChange="LoadFile" AdditionalAttributes="@(new Dictionary<string, object> { { "class", "custom-file" } })"></InputFile>
+                </p>
+                @if (canUpload)
+                {
+                    <button class="btn btn-outline-primary btn-sm mb-3" @onclick="UploadFile">
+                        @localizer["operation.upload"]
+                    </button>
+                }
+            </form>
+
+            <div class="@progressCss">
+                <div class="progress-bar" role="progressbar" style="width:@progressWidthStyle" area-valuenow="@progressPercent" aria-minvalue="0" aria-maxvalue="100"></div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMsg))
+            {
+                <div class="text-danger">@errorMsg</div>
+            }
         }
     }
 

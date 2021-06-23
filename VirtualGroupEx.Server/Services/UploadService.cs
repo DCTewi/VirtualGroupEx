@@ -62,11 +62,13 @@ namespace VirtualGroupEx.Server.Services
             await db.SaveChangesAsync();
         }
 
-        public async Task<FileStream> GenerateFileInfoAsync(int missionId, string filename)
+        public async Task<(FileStream, string)> GenerateFileInfoAsync(int missionId, string filename)
         {
+            var newId = Guid.NewGuid().ToString("N");
+
             UploadFileInfo info = new()
             {
-                Id = Guid.NewGuid().ToString("N"),
+                Id = newId,
                 MissionId = missionId,
                 OriginName = filename,
                 UploadTime = DateTime.Now,
@@ -83,9 +85,7 @@ namespace VirtualGroupEx.Server.Services
                 Directory.CreateDirectory(path);
             }
 
-            return new FileStream(
-                Path.Combine(path, result.Entity.Id),
-                FileMode.Create);
+            return (new FileStream(Path.Combine(path, result.Entity.Id), FileMode.Create), newId);
         }
 
         public async Task RemoveFileInfoAsync(string infoId)

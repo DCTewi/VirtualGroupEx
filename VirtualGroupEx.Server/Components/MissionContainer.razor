@@ -20,7 +20,7 @@
 
         public int MissionId { get; set; }
 
-        [MaxLength(6)]
+        [MaxLength(20)]
         public string Description { get; set; }
 
         public Dictionary<SkillPoint, ValueWrapper> Demands { get; set; }
@@ -201,35 +201,35 @@
                     </EditForm>
                 </ModalBody>
             </ModalComponent>
-        }
 
-        <ModalComponent ModalButtonText="@localizer["mission.section.add"]" ModalButtonClass="float-right btn-sm mr-2">
-            <ModalTitle>
-                @localizer["mission.section.add"]
-            </ModalTitle>
-            <ModalBody>
-                <EditForm Model="input" OnValidSubmit="AddSectionAsync">
-                    <DataAnnotationsValidator></DataAnnotationsValidator>
-                    <p class="form-group">
-                        <label>@localizer["mission.section.description"]</label>
-                        <InputText @bind-Value="input.Description" class="form-control"></InputText>
-                        <ValidationMessage For="@(() => input.Description)"></ValidationMessage>
-                    </p>
-                    @foreach (var kvp in input.Demands)
-                    {
+            <ModalComponent ModalButtonText="@localizer["mission.section.add"]" ModalButtonClass="float-right btn-sm mr-2">
+                <ModalTitle>
+                    @localizer["mission.section.add"]
+                </ModalTitle>
+                <ModalBody>
+                    <EditForm Model="input" OnValidSubmit="AddSectionAsync">
+                        <DataAnnotationsValidator></DataAnnotationsValidator>
                         <p class="form-group">
-                            <label>@localizer[$"sp.{kvp.Key}"]</label>
-                            <InputNumber @bind-Value="input.Demands[kvp.Key].Value" class="form-control form-control-sm"></InputNumber>
+                            <label>@localizer["mission.section.description"]</label>
+                            <InputText @bind-Value="input.Description" class="form-control"></InputText>
+                            <ValidationMessage For="@(() => input.Description)"></ValidationMessage>
                         </p>
-                    }
-                    <hr />
-                    <button class="btn btn-outline-primary" type="submit"
-                            id="secAddBtn" onmouseup="setButtonBuzy('secAddBtn')">
-                        @localizer["operation.submit"]
-                    </button>
-                </EditForm>
-            </ModalBody>
-        </ModalComponent>
+                        @foreach (var kvp in input.Demands)
+                        {
+                            <p class="form-group">
+                                <label>@localizer[$"sp.{kvp.Key}"]</label>
+                                <InputNumber @bind-Value="input.Demands[kvp.Key].Value" class="form-control form-control-sm"></InputNumber>
+                            </p>
+                        }
+                        <hr />
+                        <button class="btn btn-outline-primary" type="submit"
+                                id="secAddBtn" onmouseup="setButtonBuzy('secAddBtn')">
+                            @localizer["operation.submit"]
+                        </button>
+                    </EditForm>
+                </ModalBody>
+            </ModalComponent>
+        }
     </span>
 </h4>
 

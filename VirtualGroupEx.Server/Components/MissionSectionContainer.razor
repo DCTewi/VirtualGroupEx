@@ -9,8 +9,50 @@
     [Parameter] public EventCallback<int> Remover { get; set; }
     [Parameter] public EventCallback Reloader { get; set; }
 
+    public class InputModel
+    {
+        public class ValueWrapper
+        {
+            public int Value { get; set; }
+        }
+
+        public int MissionId { get; set; }
+
+        [MaxLength(20)]
+        public string Description { get; set; }
+
+        public Dictionary<SkillPoint, ValueWrapper> Demands { get; set; }
+
+        public InputModel(MissionSection section)
+        {
+            MissionId = section.MissionId;
+            Demands = new Dictionary<SkillPoint, ValueWrapper>();
+
+            foreach (var sp in (SkillPoint[])Enum.GetValues(typeof(SkillPoint)))
+            {
+                Demands.Add(sp, new ValueWrapper { Value = section.Demands.ContainsKey(sp) ? section.Demands[sp] : 0 });
+            }
+        }
+
+        public MissionSection ToMissionSection()
+        {
+            var resultDemands = Demands
+                .Where(kvp => kvp.Value.Value != 0)
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Value);
+
+            return new MissionSection
+            {
+                MissionId = MissionId,
+                Description = Description,
+                Demands = resultDemands
+            };
+        }
+    }
+
     private bool canJoin = false;
+    private bool errorOnEdit = false;
     private MissionColumn editingColumn;
+    private InputModel input;
     private ActionWaiter waiter = new ActionWaiter();
     private ISet<SkillPoint> demand = new HashSet<SkillPoint>();
 
@@ -52,6 +94,11 @@
                     SkillPoint = demand.First(),
                 };
             }
+
+            if (IsOperator)
+            {
+                input = new(MissionSection);
+            }
         }
     }
 
@@ -71,6 +118,28 @@
 
         await MissionService.TryAddColumnAsync(MissionSection.Id, editingColumn);
         await Reloader.InvokeAsync();
+
+        waiter.EndInvoke();
+    }
+
+    private async Task UpdateMissionSectionAsync()
+    {
+        if (waiter.CantInvoke) return;
+
+        errorOnEdit = false;
+        var result = await MissionService.UpdateMissionSectionAsync(MissionSection.Id, input.ToMissionSection());
+
+        if (result)
+        {
+            await Reloader.InvokeAsync();
+        }
+        else
+        {
+            errorOnEdit = true;
+            StateHasChanged();
+        }
+
+        waiter.EndInvoke();
     }
 }
 
@@ -86,6 +155,41 @@
                     id="disRemBtnSec@(MissionSection.Id)" onmouseup="setButtonBuzy('disRemBtnSec@(MissionSection.Id)')">
                 @localizer["operation.delete"]
             </button>
+            <span class="h6 font-weight-normal">
+                <ModalComponent ModalButtonText="@localizer["mission.section.edit"]" ModalButtonClass="float-right btn-sm mr-2">
+                    <ModalTitle>
+                        @localizer["mission.section.edit"]
+                    </ModalTitle>
+                    <ModalBody>
+                        @if (errorOnEdit)
+                        {
+                            <div class="alert alert-danger" role="alert">
+                                @localizer["msg.section.editerror"]
+                            </div>
+                        }
+                        <EditForm Model="input" OnValidSubmit="UpdateMissionSectionAsync">
+                            <DataAnnotationsValidator></DataAnnotationsValidator>
+                            <p class="form-group">
+                                <label>@localizer["mission.section.description"]</label>
+                                <InputText @bind-Value="input.Description" class="form-control"></InputText>
+                                <ValidationMessage For="@(() => input.Description)"></ValidationMessage>
+                            </p>
+                            @foreach (var kvp in input.Demands)
+                            {
+                            <p class="form-group">
+                                <label>@localizer[$"sp.{kvp.Key}"]</label>
+                                <InputNumber @bind-Value="input.Demands[kvp.Key].Value" class="form-control form-control-sm"></InputNumber>
+                            </p>                        
+                            }
+                            <hr />
+                            <button class="btn btn-outline-primary" type="submit"
+                                    id="secAddBtn" onmouseup="setButtonBuzy('secAddBtn')">
+                                @localizer["operation.submit"]
+                            </button>
+                        </EditForm>
+                    </ModalBody>
+                </ModalComponent>
+            </span>
         }
         @if (demand.Count > 0)
         {
