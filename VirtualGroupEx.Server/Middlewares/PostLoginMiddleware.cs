@@ -65,7 +65,7 @@ namespace VirtualGroupEx.Server.Middlewares
             if (httpContext.Request.Path == options.LogOutPath)
             {
                 logger.LogInformation(
-                    $"IP[{httpContext.Request.Host.Value}] User [{httpContext.User.Identity.Name}] logged out");
+                    $"User [{httpContext.User.Identity.Name}] logged out");
 
                 await signInManager.SignOutAsync();
                 httpContext.Response.Redirect("/");

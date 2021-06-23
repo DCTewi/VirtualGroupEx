@@ -32,12 +32,12 @@ namespace VirtualGroupEx.Server.Middlewares
             if (path.StartsWith("/_blazor") || path.EndsWith(".css") || path.EndsWith(".js"))
             {
                 logger.LogTrace(
-                    $"IP[{httpContext.Connection.RemoteIpAddress?.ToString()}] try to access [{path}]");
+                    $"User[{httpContext?.User?.Identity?.Name ?? "<Unknown>"}] try to access [{path}]");
             }
             else
             {
                 logger.LogInformation(
-                    $"IP[{httpContext.Connection.RemoteIpAddress?.ToString()}] try to access [{path}]");
+                    $"User[{httpContext?.User?.Identity?.Name ?? "<Unknown>"}] try to access [{path}]");
 
                 var isSigned = signInManager.IsSignedIn(httpContext.User);
 
@@ -52,7 +52,7 @@ namespace VirtualGroupEx.Server.Middlewares
                     if (!options.Whitelist.Contains(path))
                     {
                         logger.LogInformation(
-                            $"IP[{httpContext.Connection.RemoteIpAddress?.ToString()}] User[{httpContext?.User?.Identity?.Name}] access denied for [{path}]");
+                            $"User[{httpContext?.User?.Identity?.Name ?? "<Unknown>"}] access denied for [{path}]");
 
                         httpContext.Response.Redirect(options.AuthPath);
 
