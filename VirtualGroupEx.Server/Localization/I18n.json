@@ -180,6 +180,7 @@
     "operation.upload": "上传",
     "operation.resetFileCache": "重置文件缓存",
 
+    "msg.uploading": "上传中, 请勿刷新或关闭本页面",
     "msg.section.editerror": "不允许小于已参加数量, 请先退出分段",
     "msg.listEmpty": "所请求的资源为空",
     "msg.notfound": "未找到请求的资源",
@@ -371,6 +372,7 @@
     "operation.upload": "アップロード",
     "operation.resetFileCache": "ファイルキャッシュをリセット",
 
+    "msg.uploading": "上传中, 请勿刷新或关闭本页面",
     "msg.section.editerror": "不允许小于已参加数量, 请先退出分段",
     "msg.listEmpty": "リクエストのリソースは存在しません！",
     "msg.notfound": "リクエストのリソースは見つかりません！",
@@ -563,6 +565,7 @@
     "operation.upload": "Upload",
     "operation.resetFileCache": "Reset File Box Cache",
 
+    "msg.uploading": "Uploading, don't refresh or close the page",
     "msg.section.editerror": "New column count can't be lower than joined columns",
     "msg.listEmpty": "Resourse to access is empty",
     "msg.notfound": "Resourse not found",
