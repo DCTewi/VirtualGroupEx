@@ -1,5 +1,7 @@
 @inject AdminService AdminService
 @inject JSInvokeService Js
+@inject CurrentUserService CurrentUser
+@inject ILogger<DashboardQidManageComponent> Logger 
 
 @code
 {
@@ -32,6 +34,7 @@
     {
         if (waiter.CantInvoke) return;
 
+        Logger.LogInformation($"User[{CurrentUser.User.UserName}] unregistered qid [{qid}]");
         await AdminService.UnregisterQidAsync(qid);
         await ReloadPage();
 
@@ -54,6 +57,7 @@
         {
             if (!qids.Any(q => q.Qid == qid))
             {
+                Logger.LogInformation($"User[{CurrentUser.User.UserName}] registered qid [{qid}]");
                 await AdminService.RegisterQidAsync(qid);
             }
         }

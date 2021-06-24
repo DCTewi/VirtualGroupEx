@@ -1,6 +1,7 @@
 @inject CurrentUserService CurrentUser
 @inject AdminService AdminService
 @inject JSInvokeService Js 
+@inject ILogger<DashboradUserManageComponent> Logger 
 
 @code
 {
@@ -45,6 +46,7 @@
     {
         if (waiter.CantInvoke) return;
 
+        Logger.LogInformation($"User[{CurrentUser.User.UserName}] {(unban ? "unbaned" : "baned")} user [{userId}]");
         await AdminService.BanAsync(userId, unban);
         await ReloadPage();
 

@@ -2,6 +2,7 @@
 @inject CurrentUserService CurrentUser 
 @inject JSInvokeService Js 
 @inject UploadService Uploader 
+@inject ILogger<DashboardPreferenceComponent> Logger 
 
 @code 
 {
@@ -17,12 +18,13 @@
     {
         if (waiter.CantInvoke) return;
 
+        Logger.LogInformation($"User[{CurrentUser.User.UserName}] changed the preference");
         preference.BackgroundUrl = preference.BackgroundUrl.Trim();
-        if (!Uri.TryCreate(preference.BackgroundUrl, UriKind.Absolute, out Uri result) ||
-            result.Scheme != Uri.UriSchemeHttps)
-        {
-            preference.BackgroundUrl = string.Empty;
-        }
+        //if (!Uri.TryCreate(preference.BackgroundUrl, UriKind.Absolute, out Uri result) ||
+        //    result.Scheme != Uri.UriSchemeHttps)
+        //{
+        //    preference.BackgroundUrl = string.Empty;
+        //}
 
         Preference.Options = preference;
         StateHasChanged();
@@ -33,8 +35,15 @@
 
     private async Task Reset()
     {
+        Logger.LogInformation($"User[{CurrentUser.User.UserName}] reset the preference");
         preference = new PreferenceOptions();
         await Apply();
+    }
+
+    private async Task RefreshFileCacheAsync()
+    {
+        Logger.LogInformation($"User[{CurrentUser.User.UserName}] refreshed the file cache");
+        await Uploader.RefreshFileCacheAsync();
     }
 }
 
@@ -79,19 +88,19 @@
         <InputTextArea class="form-control" @bind-Value="preference.BackgroundUrl"></InputTextArea>
     </p>
 
-    <button class="btn btn-outline-primary mr-2" @onclick="async () => await Apply()"
+    <button class="btn btn-outline-primary mr-2" @onclick="Apply"
             id="prefApBtn" onmouseup="setButtonBuzy('prefApBtn')">
         @localizer["operation.apply"]
     </button>
 
-    <button class="btn btn-outline-info mr-2" @onclick="async () => await Uploader.RefreshFileCacheAsync()"
+    <button class="btn btn-outline-info mr-2" @onclick="RefreshFileCacheAsync"
             id="filecacheResetBtn" onmouseup="setButtonBuzy('filecacheResetBtn')">
         @localizer["operation.resetFileCache"]
     </button>
 
     @if (CurrentUser.User.IsAdministrator)
     {
-        <button class="btn btn-outline-danger" @onclick="async () => await Reset()"
+        <button class="btn btn-outline-danger" @onclick="Reset"
                 id="prefRsBtn" onmouseup="setButtonBuzy('prefRsBtn')">
             @localizer["operation.reset"]
         </button>

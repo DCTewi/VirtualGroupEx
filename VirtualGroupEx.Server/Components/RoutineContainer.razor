@@ -4,6 +4,7 @@
 @inject UserInfoService UserInfo 
 @inject RoutineService RoutineService
 @inject JSInvokeService Js
+@inject ILogger<RoutineContainer> Logger 
 
 @code
 {
@@ -38,6 +39,7 @@
 
         if (CurrentUser.User.Id == Routine.UserId || CurrentUser.User.IsOperator)
         {
+            Logger.LogInformation($"User[{CurrentUser.User.UserName}] try to change routine [{Routine.Id}]");
             Routine.RoutineType = input.Type;
             Routine.RoutineContent = input.Content;
             await Js.HideModalsAsync();
@@ -54,6 +56,7 @@
         if (CurrentUser.User.Id == Routine.UserId || CurrentUser.User.IsOperator)
             if (await Js.Confirm(localizer["operation.confirm"]))
             {
+                Logger.LogInformation($"User[{CurrentUser.User.UserName}] try to delete routine [{Routine.Id}]");
                 await RoutineService.RemoveAsync(Routine.Id);
                 await Reloader.InvokeAsync();
             }

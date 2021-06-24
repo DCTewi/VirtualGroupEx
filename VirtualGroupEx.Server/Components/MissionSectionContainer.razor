@@ -1,7 +1,8 @@
 @inject MissionService MissionService
 @inject JSInvokeService Js
 @inject CurrentUserService CurrentUser 
-
+@inject ILogger<MissionSectionContainer> Logger
+ 
 @code 
 {
     [Parameter] public MissionSection MissionSection { get; set; }
@@ -131,6 +132,7 @@
 
         if (result)
         {
+            Logger.LogInformation($"User[{CurrentUser.User.UserName}] updated the mission section [{MissionSection.Id}]");
             await Reloader.InvokeAsync();
         }
         else

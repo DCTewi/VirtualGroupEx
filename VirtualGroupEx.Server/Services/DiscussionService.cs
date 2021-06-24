@@ -95,7 +95,7 @@ namespace VirtualGroupEx.Server.Services
                 .ToList();
         }
 
-        public async Task AddPostAsync(DiscussionPost post)
+        public async Task<int> AddPostAsync(DiscussionPost post)
         {
             var now = DateTime.Now;
 
@@ -104,11 +104,12 @@ namespace VirtualGroupEx.Server.Services
             db.Discussions.Update(dis);
 
             post.CreationTime = now;
-            db.DiscussionPosts.Add(post);
+            var result = db.DiscussionPosts.Add(post);
 
             await db.SaveChangesAsync();
             db.Entry(dis).State = EntityState.Detached;
             db.Entry(post).State = EntityState.Detached;
+            return result.Entity.Id;
         }
 
         public async Task RemovePostAsync(int postId)

@@ -3,6 +3,7 @@
 @inject JSInvokeService Js
 @inject PreferenceService Preference
 @inject NavigationManager NavigationManager 
+@inject ILogger<MissionList> Logger 
 
 @code
 {
@@ -36,6 +37,7 @@
         if (waiter.CantInvoke) return;
 
         var id = await MissionService.AddMissionAsync(editingMission);
+        Logger.LogInformation($"User[{CurrentUser.User.UserName}] try to add mission [{id}]");
         waiter.EndInvoke();
         LoadMission(id);
     }

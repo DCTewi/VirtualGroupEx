@@ -7,6 +7,7 @@
 @inject UploadService Uploader
 @inject NavigationManager NavigationManager
 @inject PreferenceService Preference 
+@inject ILogger<MissionFileUploader> Logger 
 
 @code
 {
@@ -79,8 +80,10 @@
                 isUploading = true;
                 StateHasChanged();
 
+                Logger.LogInformation($"User[{CurrentUser.User.UserName}] try to upload [{loadedFile.Name}] for mission [{Mission.Id}] as [{lastId}]");
                 await loadedFile.OpenReadStream(maxFileSize).CopyToAsync(fs, cancelation.Token);
 
+                Logger.LogInformation($"User[{CurrentUser.User.UserName}]'s uploading of [{loadedFile.Name}] for mission [{Mission.Id}] is completed");
                 isUploading = false;
                 lastId = string.Empty;
                 StateHasChanged();
@@ -101,6 +104,7 @@
     {
         if (waiter.CantInvoke) return;
 
+        Logger.LogInformation($"User[{CurrentUser.User.UserName}] try to delete file [{infoId}]");
         await Uploader.RemoveFileInfoAsync(infoId);
         ReloadPage();
 
@@ -114,6 +118,7 @@
         // delete failed files
         if (isUploading && !string.IsNullOrEmpty(lastId))
         {
+            Logger.LogWarning($"User[{CurrentUser.User.UserName}] uploading failed");
             await Task.Run(new Action(async () =>
             {
                 var confirmDelete = false;
@@ -124,6 +129,7 @@
                     {
                         await Uploader.RemoveFileInfoAsync(lastId);
                         confirmDelete = true;
+                        Logger.LogInformation($"Broken file deleted");
                     }
                     catch
                     {

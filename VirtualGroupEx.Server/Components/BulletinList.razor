@@ -1,6 +1,7 @@
 @inject CurrentUserService CurrentUser
 @inject BulleinService BulleinService
 @inject JSInvokeService Js 
+@inject ILogger<BulletinList> Logger 
 
 @code
 {
@@ -61,6 +62,7 @@
         else
         {
             await BulleinService.UpdateAsync(editingBulletin);
+            Logger.LogInformation($"User[{CurrentUser.User.UserName}] try to edit bullein [{editingBulletin.Id}]");
         }
         ReloadPage();
     }
@@ -69,6 +71,7 @@
     {
         if (await Js.Confirm(localizer["operation.confirm"]))
         {
+            Logger.LogInformation($"User[{CurrentUser.User.UserName}] try to delete bullein [{id}]");
             await BulleinService.RemoveAsync(id);
         }
         ReloadPage();

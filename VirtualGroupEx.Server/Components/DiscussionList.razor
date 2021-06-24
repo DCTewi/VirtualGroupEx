@@ -4,6 +4,7 @@
 @inject NavigationManager NavigationManager
 @inject PreferenceService Preference
 @inject JSInvokeService Js
+@inject ILogger<DiscussionList> Logger
 
 @code
 {
@@ -32,20 +33,12 @@
         StateHasChanged();
     }
 
-    private async Task RemoveAsync(int disId)
-    {
-        if (waiter.CantInvoke) return;
-
-        await DiscussService.RemoveAsync(disId);
-        OnInitialized();
-        waiter.EndInvoke();
-    }
-
     private async Task OnSubmitAsync()
     {
         if (waiter.CantInvoke) return;
 
         var id = await DiscussService.AddAsync(editingDiscussion);
+        Logger.LogInformation($"User[{CurrentUser.User.UserName}] try to add discussion [{id}]");
         waiter.EndInvoke();
         LoadDiscussion(id);
     }

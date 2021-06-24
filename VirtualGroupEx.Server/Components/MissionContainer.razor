@@ -4,6 +4,7 @@
 @inject DiscussionService DiscussionService
 @inject NavigationManager NavigationManager
 @inject JSInvokeService Js
+@inject ILogger<MissionContainer> Logger  
 
 @code
 {
@@ -85,6 +86,7 @@
 
         if (await Js.Confirm(localizer["operation.confirm"]))
         {
+            Logger.LogInformation($"User[{CurrentUser.User.UserName}] try to delete mission [{Mission.Id}]");
             await Remover.InvokeAsync(Mission.Id);
         }
     }
@@ -102,6 +104,7 @@
         Mission.Description = editingMission.Description;
         Mission.PublishAddress = editingMission.PublishAddress;
 
+        Logger.LogInformation($"User[{CurrentUser.User.UserName}] try to edit mission [{Mission.Id}]");
         await Updater.InvokeAsync(Mission);
     }
 
@@ -109,12 +112,14 @@
     {
         if (waiter.CantInvoke) return;
 
+        Logger.LogInformation($"User[{CurrentUser.User.UserName}] try to add mission section for mission [{Mission.Id}]");
         await MissionService.AddSectionAsync(input.ToMissionSection());
         ReloadPage();
     }
 
     private async Task RemoveSectionAsync(int sectionId)
     {
+        Logger.LogInformation($"User[{CurrentUser.User.UserName}] try to delete mission section [{sectionId}]");
         await MissionService.RemoveSectionAsync(sectionId);
         ReloadPage();
     }

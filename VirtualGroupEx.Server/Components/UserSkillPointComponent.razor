@@ -1,5 +1,7 @@
 @inject AdminService AdminService
 @inject JSInvokeService Js
+@inject CurrentUserService CurrentUser
+@inject ILogger<UserSkillPointComponent> Logger  
 
 @code 
 {
@@ -27,6 +29,7 @@
     {
         if (waiter.CantInvoke) return;
 
+        Logger.LogInformation($"User[{CurrentUser.User.UserName}] changed user[{User.UserName}]'s skillpoint");
         await AdminService.UpdateSkillPointAsync(User.Id, User.SkillPoints);
         waitForApply = false;
         await Js.ResetButtonAsync();

@@ -4,6 +4,7 @@
 @inject NavigationManager NavigationManager
 @inject MissionService MissionService
 @inject JSInvokeService Js
+@inject ILogger<DiscussionList> Logger
 
 @code
 {
@@ -40,6 +41,7 @@
 
     private async Task RemovePostAsync(int postId)
     {
+        Logger.LogInformation($"User[{CurrentUser.User.UserName}] try to delete post [{postId}]");
         await DiscussionService.RemovePostAsync(postId);
         ReloadPage();
     }
@@ -48,7 +50,8 @@
     {
         if (waiter.CantInvoke) return;
 
-        await DiscussionService.AddPostAsync(editingPost);
+        var id = await DiscussionService.AddPostAsync(editingPost);
+        Logger.LogInformation($"User[{CurrentUser.User.UserName}] try to add post [{id}]");
         ReloadPage();
     }
 
@@ -67,6 +70,7 @@
         newTitle = newTitle.Trim();
         if (newTitle.Length <= 30)
         {
+            Logger.LogInformation($"User[{CurrentUser.User.UserName}] try to update discussion [{Discussion.Id}]");
             await DiscussionService.UpdateTitleById(Discussion.Id, newTitle);
         }
         ReloadPage();
@@ -78,6 +82,7 @@
 
         if (await Js.Confirm(localizer["operation.confirm"]))
         {
+            Logger.LogInformation($"User[{CurrentUser.User.UserName}] try to remove discussion [{Discussion.Id}]");
             await Remover.InvokeAsync(Discussion.Id);
         }
     }
