@@ -18,9 +18,9 @@
             {
                 <form class="form-inline" method="dialog">
                     <p class="input-group mb-0">
-                        <input class="form-control" placeholder="@localizer["search.string"]" @bind="keyword" />
+                        <input class="form-control" type="text" placeholder="@localizer["search.string"]" @bind="keyword" />
                         <div class="input-group-append">
-                            <button type="button" class="btn btn-outline-primary" @onclick="@(() => NavigationManager.NavigateTo($"/search/{keyword}", forceLoad: true))"
+                            <button type="submit" class="btn btn-outline-primary" @onclick="@(() => NavigationManager.NavigateTo($"/search/{keyword}", forceLoad: true))"
                                     id="searchBtn" onmouseup="setButtonBuzy('searchBtn')">
                                 @localizer["operation.search"]
                             </button>
