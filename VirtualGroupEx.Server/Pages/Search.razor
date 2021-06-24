@@ -46,20 +46,21 @@
 
 @if (string.IsNullOrEmpty(Keyword))
 {
+    Keyword = string.Empty;
     <hr />
-    <form class="col-lg-8" method="dialog">
+    <EditForm Model="Keyword" class="col-lg-8" OnSubmit="@(() => NavigationManager.NavigateTo($"/search/{Keyword}"))">
 
         <p class="form-group">
             <label>@localizer["search.string"]</label>
-            <input class="form-control" @bind="Keyword" />
+            <InputText class="form-control" @bind-Value="@Keyword" />
         </p>
 
-        <button type="button" class="btn btn-outline-primary" @onclick="@(() => NavigationManager.NavigateTo($"/search/{Keyword}"))"
+        <button type="submit" class="btn btn-outline-primary" 
                 id="searchBtn" onmouseup="setButtonBuzy('searchBtn')">
             @localizer["operation.search"]
         </button>
 
-    </form>
+    </EditForm>
 }
 
 @if (searchResults != null)

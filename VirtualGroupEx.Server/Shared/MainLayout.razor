@@ -4,7 +4,7 @@
 
 @code 
 {
-    private string keyword;
+    private string keyword = string.Empty;
 }
 
 <div class="page">
@@ -16,17 +16,17 @@
         <div class="top-row auth px-4">
             @if (CurrentUser.User != null)
             {
-                <form class="form-inline" method="dialog">
+                <EditForm Model="keyword" class="form-inline" OnSubmit="@(() => NavigationManager.NavigateTo($"/search/{keyword}", forceLoad: true))">
                     <p class="input-group mb-0">
-                        <input class="form-control" placeholder="@localizer["search.string"]" @bind="keyword" />
+                        <InputText class="form-control" placeholder="@localizer["search.string"]" @bind-Value="@keyword" />
                         <div class="input-group-append">
-                            <button type="button" class="btn btn-outline-primary" @onclick="@(() => NavigationManager.NavigateTo($"/search/{keyword}", forceLoad: true))"
-                                    id="searchBtn" onmouseup="setButtonBuzy('searchBtn')">
+                            <button class="btn btn-outline-primary" type="submit"
+                                    id="topSearchBtn" onmouseup="setButtonBuzy('topSearchBtn')">
                                 @localizer["operation.search"]
                             </button>
                         </div>
                     </p>
-                </form>
+                </EditForm>
                 <a href="/me">
                     <span class="oi oi-person mr-1"></span>
                     @CurrentUser.User.NickName.Substring(0, Math.Min(CurrentUser.User.NickName.Length, 9))
