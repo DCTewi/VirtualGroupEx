@@ -12,13 +12,43 @@ Yet Another v Group Forum | 又一个v字幕组综合平台。
 
 开发过程其实是在另一个Repo，但是那个Commit太杂乱了，所以新开了一个。
 
-## 部署
+## 编译
 
-clone 之后 publish 一下然后复制到服务器上，改一下 `appsettings.json` 就能用了。
+编译前需安装 [.NET 5.0 SDK](https://docs.microsoft.com/zh-cn/dotnet/core/install/linux)
 
-另外，反代需要配置一下 Web Socket。
+#### 克隆代码
+
+```shell
+git clone https://github.com/DCTewi/VirtualGroupEx.git
+```
+#### 编译项目
+
+```shell
+#进入项目文件夹
+cd VirtualGroupEx/
+
+# 编译程序到 "published/"
+dotnet publish -c Release -o published/ 
+
+# 进入编译完成文件夹
+cd published/
+```
+
+## 运行
+
+```shell
+# 启动 VirtualGroupEx
+dotnet VirtualGroupEx.Server.dll
+```
+
+配置文件在 ` appsettings.json `
+
+另外，反代需要[配置Web Socket](https://docs.microsoft.com/zh-cn/aspnet/core/blazor/host-and-deploy/server?view=aspnetcore-5.0) 。
+ 
 
 ## 截图
+
+截图可能不是最新的，可自行在软件内体验
 
 [![RpH7VS.md.png](https://z3.ax1x.com/2021/06/18/RpH7VS.md.png)](https://imgtu.com/i/RpH7VS)
 [![RpHob8.md.png](https://z3.ax1x.com/2021/06/18/RpHob8.md.png)](https://imgtu.com/i/RpHob8)
